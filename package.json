@@ -1,0 +1,33 @@
+{
+  "name": "fyp-virtual-therapy-platform-healnest-",
+  "version": "1.0.0",
+  "description": "Final Year Project",
+  "main": "backend/server.js",
+  "scripts": {
+    "dev": "nodemon backend/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AnishRM-ai/FYP-Virtual-Therapy-Platform-HealNest-.git"
+  },
+  "author": "Anish Rajan Magar",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AnishRM-ai/FYP-Virtual-Therapy-Platform-HealNest-/issues"
+  },
+  "homepage": "https://github.com/AnishRM-ai/FYP-Virtual-Therapy-Platform-HealNest-#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "fyp-virtual-therapy-platform-healnest-": "file:",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.3",
+    "nodemon": "^3.1.9",
+    "passport": "^0.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io": "^4.8.1"
+  }
+}
