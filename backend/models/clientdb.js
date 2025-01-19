@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
-const User = require("./userBase");
-
+const User = require('../models/User')
 const clientSchema = new mongoose.Schema({
     moodTracker: [
         {
@@ -38,8 +37,13 @@ const clientSchema = new mongoose.Schema({
                 default: 'scheduled'
             }
         }
-    ]
-});
+    ],
+    resetPasswordToken: String,
+    resetPasswordExpiresAt: Date,
+    verificationToken: String,
+    verificationTokenExpiresAt: Date
 
+});
+ 
 const Client = User.discriminator('Client', clientSchema);
 module.exports = Client;

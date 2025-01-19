@@ -1,55 +1,69 @@
 const mongoose = require('mongoose');
-const User = require("./userBase");
-
-const therapistSchema = new mongoose.Schema({
-    qualificationProof: {
-        type: String,
-        required: true
-    },
-    isTherapistVerified:{
-        type: Boolean,
-        default: false
-    },
-    sessionHistory: [{
-        clientId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Client'
+const User = require('../models/User')
+const therapistSchema = new mongoose.Schema(
+    {
+        qualificationProof: {
+            type: String,
+            default: null, // Default as null to clarify it can be empty
         },
-        sessionDate: Date,
-        sessionNotes: String
-    }],
-    feedbacks: [
-        {
-            clientId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Client'
+        isTherapistVerified: {
+            type: Boolean,
+            default: false,
+        },
+        sessionHistory: [
+            {
+                clientId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Client',
+                },
+                sessionDate: {
+                    type: Date,
+                },
+                sessionNotes: {
+                    type: String,
+                    trim: true,
+                },
             },
-            rating: {
-                type: Number,
-                min: 1,
-                max: 5
+        ],
+        feedbacks: [
+            {
+                clientId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Client',
+                },
+                rating: {
+                    type: Number,
+                    min: 1,
+                    max: 5,
+                },
+                comment: {
+                    type: String,
+                    trim: true,
+                },
+                date: {
+                    type: Date,
+                    default: Date.now,
+                },
             },
-            comment: String,
-            date: {
-                type: Date,
-                default: Date.now
-            }
-        }
-    ],
-    paymentStatements: [
-        {
-            amount: Number,
-            date: {
-                type: Date, 
-                default: Date.now
+        ],
+        paymentStatements: [
+            {
+                amount: {
+                    type: Number,
+                    required: true,
+                },
+                date: {
+                    type: Date,
+                    default: Date.now,
+                },
+                clientId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Client',
+                },
             },
-            clientId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Client'
-            }
-        }
-    ]
-});
+        ],
+    }
+);
 
-const Therapist = User.discriminator('Therapist', therapistSchema);
-module.exports = Therapist
+const Therapist = User.discriminator('Therapist', therapistSchema)
+module.exports = Therapist;

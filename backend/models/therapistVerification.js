@@ -17,7 +17,7 @@ const therapistVerificationSchema = new mongoose.Schema({
     },
     reviewedBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User' // Assuming Admin is part of User model
+        ref: 'Admin' // Assuming Admin is part of User model
     },
     reviewedAt: Date,
     feedback: String,
