@@ -1,32 +1,48 @@
 const express = require('express');
-const {registerUser,
+const {registerUser, registerAdmin, loginAdmin, registerTherapist,
     login, 
     forgotPassword,
 logout,
-resetPassword} = require('../controllers/userAuth');
+resetPassword, 
+checkAuth} = require('../controllers/userAuth');
 const verifyEmail = require('../controllers/emailVerification');
+const verifyToken = require('../middleware/verifyToken');
+const rateLimit = require('express-rate-limit');
+const onboardTherapist = require('../controllers/onboardingTherapist');
+const authMiddleware = require('../middleware/authMiddleware');
+const upload = require('../middleware/multerConfig');
 const router = express.Router();
 
-//Register routes.
 
-//Routes for Client.
+const loginLimiter = rateLimit({
+    windowMs: 15*60*1000,
+    max: 5,
+    message: 'Too many login attempts, try again after 15 minutes'
+});
+
+//Authentication Routes
+router.get("/check-auth", verifyToken, checkAuth);
 router.post('/register', registerUser );
-
-//Routes for Therapist.
+router.post("/verify-email", verifyEmail);
+router.post('/login', loginLimiter, login);
+router.post('/logout', logout);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
 
 
 
 //Admin routes.
-router.post('admin/register');
+router.post('/admin/register', registerAdmin);
+router.post('/admin/login', loginAdmin )
+
+
+//Therapist Routes
+router.post('/therapist/register', registerTherapist);
 
 
 
-
-router.post("/verify-email", verifyEmail);
-router.post('/login', login);
-
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password/:token", resetPassword);
+//Onboarding Routes
+router.post('/therapist/onboarding',verifyToken, upload,  onboardTherapist);
 
 
 module.exports = router;

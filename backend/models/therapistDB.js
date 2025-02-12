@@ -3,13 +3,40 @@ const User = require('../models/User')
 const therapistSchema = new mongoose.Schema(
     {
         qualificationProof: {
-            type: String,
+            type: [String],
             default: null, // Default as null to clarify it can be empty
         },
         isTherapistVerified: {
             type: Boolean,
             default: false,
         },
+            specializations: [{
+                type: String,
+                enum: ['depression', 'anxiety', 'relationship', 'trauma', ]
+            }],
+            education: [{
+                degree: String,
+                institution: String,
+                year: Number
+            }],
+            availability: [{
+                day: {
+                    type: String,
+                    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                },
+                slots: [{
+                    startTime: String,
+                    endTime: String,
+                    isBooked: Boolean
+                }]
+            }],
+            sessionPrice: {
+                type: Number
+            },
+            languages: [{
+                type: String
+            }],
+        
         sessionHistory: [
             {
                 clientId: {
@@ -25,6 +52,16 @@ const therapistSchema = new mongoose.Schema(
                 },
             },
         ],
+        paymentDetails: {
+            provider: {
+                type: String,
+                enum: ['Stripe', 'Paypal'],
+            },
+            customerId: {
+                type: String,
+            }
+        },
+        
         feedbacks: [
             {
                 clientId: {

@@ -1,0 +1,79 @@
+const mongoose = require('mongoose');
+
+const sessionSchema = new mongoose.Schema({
+    therapistId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Therapist',
+        required: true
+    },
+    clientId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Client',
+        required: true
+    },
+    scheduledTime: {
+        type: Date,
+        required: true
+    },
+    duration: {
+        type: Number,
+        default: 60, // minutes
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['scheduled', 'in-progress', 'completed', 'cancelled', 'no-show'],
+        default: 'scheduled'
+    },
+    sessionType: {
+        type: String,
+        enum: ['initial-consultation', 'follow-up', 'emergency'],
+        required: true
+    },
+    meetingLink: {
+        type: String,
+        required: true
+    },
+    payment: {
+        amount: Number,
+        status: {
+            type: String,
+            enum: ['pending', 'completed', 'refunded'],
+            default: 'pending'
+        },
+        transactionId: String
+    },
+    notes: {
+        clientNotes: String, // visible to client
+        therapistNotes: String, // private notes for therapist
+        diagnosis: String,
+        treatmentPlan: String
+    },
+    feedback: {
+        rating: {
+            type: Number,
+            min: 1,
+            max: 5
+        },
+        comment: String,
+        givenAt: Date
+    },
+    cancellation: {
+        reason: String,
+        cancelledBy: {
+            type: String,
+            enum: ['client', 'therapist']
+        },
+        cancelledAt: Date
+    }
+}, {
+    timestamps: true
+});
+
+// Indexes for frequent queries
+sessionSchema.index({ therapistId: 1, scheduledTime: 1 });
+sessionSchema.index({ clientId: 1, scheduledTime: 1 });
+sessionSchema.index({ status: 1 });
+
+const Session = mongoose.model('Session', sessionSchema);
+module.exports = Session;

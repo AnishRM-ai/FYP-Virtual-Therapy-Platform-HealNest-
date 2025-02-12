@@ -23,6 +23,23 @@ const clientSchema = new mongoose.Schema({
         }
     ],
 
+    emergencyContact: {
+        name: String,
+        relationship: String,
+        phoneNumber: String
+    },
+    preferences: {
+        therapistGender: String,
+        preferredLanguage: String,
+        preferredSessionTime: String
+    },
+    medicalHistory: {
+        conditions: [String],
+        medications: [String],
+        allergies: [String],
+        lastUpdated: Date
+    },
+
     bookedSessions: [
         {
             therapistId: {
