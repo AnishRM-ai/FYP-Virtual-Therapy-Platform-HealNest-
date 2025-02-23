@@ -29,6 +29,8 @@
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "fyp-virtual-therapy-platform-healnest-": "file:",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^144.0.0",
     "jsonwebtoken": "^9.0.2",
     "mailtrap": "^3.4.0",
     "mongoose": "^8.9.3",

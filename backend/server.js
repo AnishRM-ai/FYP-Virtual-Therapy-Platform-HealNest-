@@ -54,7 +54,7 @@ app.get(
       
         // Redirect based on user role
         if (req.user.role === 'client') {
-            res.redirect('/client-dashboard');
+            res.redirect('http://localhost:5173/client-dashboard');
         } else if (req.user.role === 'therapist') {
             res.redirect('/therapist-dashboard');
         } else {

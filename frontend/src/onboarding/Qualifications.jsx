@@ -1,23 +1,26 @@
 import React, { useState } from "react";
-import { Box, Button, Typography, IconButton } from "@mui/material";
-import { CloudUpload, CheckCircle, Delete } from "@mui/icons-material";
+import { Box, Button, Typography, IconButton, Chip } from "@mui/material";
+import { CloudUpload, Delete } from "@mui/icons-material";
 
 const Qualifications = ({ onNext, onBack }) => {
-  const [files, setFiles] = useState({
-    idFile: null,
-    licenseFile: null,
-    certificationFile: null,
-  });
+  const [files, setFiles] = useState([null, null, null]);
 
-  const handleFileChange = (event, fieldName) => {
-    setFiles({ ...files, [fieldName]: event.target.files[0] });
+  const handleFileChange = (event, index) => {
+    const file = event.target.files[0];
+    if (file) {
+      const updatedFiles = [...files];
+      updatedFiles[index] = file;
+      setFiles(updatedFiles);
+    }
   };
 
-  const handleRemoveFile = (fieldName) => {
-    setFiles({ ...files, [fieldName]: null });
+  const handleRemoveFile = (index) => {
+    const updatedFiles = [...files];
+    updatedFiles[index] = null;
+    setFiles(updatedFiles);
   };
 
-  const renderFileUploader = (label, fieldName) => (
+  const renderFileUploader = (label, index) => (
     <Box
       sx={{
         border: "2px dashed #ccc",
@@ -33,17 +36,17 @@ const Qualifications = ({ onNext, onBack }) => {
         type="file"
         accept=".pdf,.jpg,.png"
         style={{ display: "none" }}
-        id={fieldName}
-        onChange={(e) => handleFileChange(e, fieldName)}
+        id={`qualificationProof${index}`}
+        onChange={(e) => handleFileChange(e, index)}
       />
-      <label htmlFor={fieldName} style={{ cursor: "pointer" }}>
+      <label htmlFor={`qualificationProof${index}`} style={{ cursor: "pointer" }}>
         <CloudUpload fontSize="large" color="primary" />
-        <Typography variant="body1">{files[fieldName] ? files[fieldName].name : `Upload ${label}`}</Typography>
+        <Typography variant="body1">{files[index] ? files[index].name : `Upload ${label}`}</Typography>
       </label>
-      {files[fieldName] && (
+      {files[index] && (
         <IconButton
           sx={{ position: "absolute", top: 5, right: 5 }}
-          onClick={() => handleRemoveFile(fieldName)}
+          onClick={() => handleRemoveFile(index)}
         >
           <Delete color="error" />
         </IconButton>
@@ -51,21 +54,53 @@ const Qualifications = ({ onNext, onBack }) => {
     </Box>
   );
 
+  const handleNext = () => {
+    // Convert files to an array of file names
+    const fileNames = files.filter(file => file !== null).map(file => file.name);
+
+    // Create a JSON string for qualificationProof
+    const qualificationProof = JSON.stringify(fileNames);
+
+    // Pass the data to the parent component
+    onNext({ qualificationProof });
+  };
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
         Qualifications
       </Typography>
 
-      <Box mt={2}>{renderFileUploader("ID", "idFile")}</Box>
-      <Box mt={2}>{renderFileUploader("License", "licenseFile")}</Box>
-      <Box mt={2}>{renderFileUploader("Certifications", "certificationFile")}</Box>
+      <Box mt={2}>{renderFileUploader("Proof 1", 0)}</Box>
+      <Box mt={2}>{renderFileUploader("Proof 2", 1)}</Box>
+      <Box mt={2}>{renderFileUploader("Proof 3", 2)}</Box>
+
+      {files.some(file => file !== null) && (
+        <Box mt={2}>
+          <Typography variant="subtitle2" gutterBottom>
+            Qualification Proofs:
+          </Typography>
+          <Box display="flex" flexWrap="wrap" gap={1}>
+            {files.map((file, index) => (
+              file && (
+                <Chip
+                  key={index}
+                  label={file.name}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+              )
+            ))}
+          </Box>
+        </Box>
+      )}
 
       <Box mt={3} display="flex" justifyContent="space-between">
         <Button variant="outlined" onClick={onBack}>
           Back
         </Button>
-        <Button variant="contained" onClick={() => onNext(files)}>
+        <Button variant="contained" onClick={handleNext}>
           Next
         </Button>
       </Box>

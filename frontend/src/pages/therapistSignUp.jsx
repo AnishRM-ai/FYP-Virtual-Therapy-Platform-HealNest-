@@ -31,8 +31,7 @@ export default function SignUpPage() {
         setFormData((prevData) => ({ ...prevData, role }));
       } catch (error) {
         console.error("Error decoding state:", error);
-        // Handle the error, perhaps redirecting the user or displaying a message
-        // For example: navigate('/select-role'); or toast.error("Invalid role selection.")
+        
       }
     }
   }, [searchParams, navigate]); // Add navigate to the dependency array

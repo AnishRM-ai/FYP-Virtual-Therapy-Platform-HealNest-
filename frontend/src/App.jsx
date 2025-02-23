@@ -14,6 +14,8 @@ import { useAuthStore } from "./store/authStore.js";
 import CircularProgress from '@mui/material/CircularProgress';
 import OnboardingFlow from "./pages/onboardingtherapist";
 import AppointmentBooking from "./pages/booking.jsx";
+import ClientOnboarding from "./pages/OnBoardingClient.jsx";
+import FindTherapist from "./pages/therapistSearch.jsx";
 
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
@@ -21,7 +23,7 @@ const RedirectAuthenticatedUser = ({ children }) => {
   // Show loading spinner while checking authentication
   if (isCheckingAuth) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width:'100%' }}>
         <CircularProgress />
       </div>
     );
@@ -29,20 +31,28 @@ const RedirectAuthenticatedUser = ({ children }) => {
 
   // Redirect based on role if authenticated and verified
   if (isAuthenticated) {
-    if (user.isVerified) {
-      switch (user.role) {
-        case "client":
-          return <Navigate to="/client-dashboard" replace />;
-        case "therapist":
-          return <Navigate to="/therapist-dashboard" replace />;
-        case "admin":
-          return <Navigate to="/admin-dashboard" replace />;
-        default:
-          return <Navigate to="/select-role" replace />; // Handle unexpected roles
-      }
-    } else {
-      // Redirect to email verification if not verified
+    if (!user.isVerified) {
       return <Navigate to="/verify-email" replace />;
+    }
+
+    // Redirect users to onboarding if they haven't completed it
+    if (user.role === "therapist" && !user.isOnboarded) {
+      return <Navigate to="/therapist/onboarding" replace />;
+    }
+    if (user.role === "client" && !user.isOnboarded) {
+      return <Navigate to="/client/onboarding" replace />;
+    }
+
+    // Redirect based on role
+    switch (user.role) {
+      case "client":
+        return <Navigate to="/client-dashboard" replace />;
+      case "therapist":
+        return <Navigate to="/therapist-dashboard" replace />;
+      case "admin":
+        return <Navigate to="/admin-dashboard" replace />;
+      default:
+        return <Navigate to="/select-role" replace />;
     }
   }
 
@@ -75,10 +85,10 @@ const App = () => {
           body: {
             margin: 0,
             padding: 0,
-            height: "100vh",
+           
             justifyContent: "center",
             alignItems: "center",
-            background: "#6FE8B1",
+            background: "#FFFFFF",
           },
           "#root": {
             width: "100%",
@@ -107,7 +117,9 @@ const App = () => {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/therapist/onboarding" element={<OnboardingFlow />} />
+        <Route path="/client/onboarding" element={<ClientOnboarding />} />
         <Route path="/booking" element={<AppointmentBooking />} />
+        <Route path="/therapist-search" element={<FindTherapist />} />
 
         <Route
           path="/select-role"

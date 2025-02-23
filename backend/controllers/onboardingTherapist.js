@@ -5,8 +5,8 @@ const upload = require('../middleware/multerConfig');
 
 const onboardTherapist = async (req, res) => {
     try {
-        if (!req.files || req.files.length !== 3) {
-            return res.status(400).json({ success: false, message: "Exactly 3 qualificationProof documents are required." });
+        if (!req.files) {
+            return res.status(400).json({ success: false, message: "Please submit your valid document." });
         }
 
         const userId = req.userId;
@@ -17,7 +17,7 @@ const onboardTherapist = async (req, res) => {
         }
 
         if (!therapist.isVerified) {
-            return res.status(400).json({ success: false, message: "Please verify your email." });
+            return res.status(400).json({ success: false, message: "Please verify your email." }); 
         }
 
         // Convert uploaded files to paths

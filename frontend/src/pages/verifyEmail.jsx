@@ -46,14 +46,9 @@ const VerifyEmail = () => {
     return;
   }
   try{
-    const userData = await verifyEmail(verificationCode);
+    const response = await verifyEmail(verificationCode);
     toast.success("Email verified successfully.")
-
-    if(userData?.role === "therapist") {
-      navigate('/onboarding');
-    } else {
-      navigate('/signin');
-    }
+    console.log(response);
     
     
   }catch (error){

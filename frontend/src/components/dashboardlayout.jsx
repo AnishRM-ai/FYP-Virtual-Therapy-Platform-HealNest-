@@ -22,19 +22,19 @@ const DashboardLayout = ({ children }) => {
         </Typography>
       </Toolbar>
       <List>
-        <ListItem button>
+        <ListItem button={true} >
           <ListItemIcon>
             <DashboardIcon />
           </ListItemIcon>
           <ListItemText primary="Dashboard" />
         </ListItem>
-        <ListItem button>
+        <ListItem button={true}>
           <ListItemIcon>
             <SettingsIcon />
           </ListItemIcon>
           <ListItemText primary="Settings" />
         </ListItem>
-        <ListItem button>
+        <ListItem button={true}>
           <ListItemIcon>
             <LogoutIcon />
           </ListItemIcon>

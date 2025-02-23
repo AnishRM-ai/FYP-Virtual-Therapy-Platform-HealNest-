@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const generateJWTToken = require("../middleware/jwtMiddleware");
     const verifyEmail = async (req, res) => {
         const { code } = req.body; // No role required
         try {
@@ -20,8 +21,22 @@ const User = require("../models/User");
             user.verificationToken = undefined;
             user.verificationTokenExpiresAt = undefined;
             await user.save();
+
+            const token = generateJWTToken(user._id, user.role);
+            res.cookie("token", token, {
+                httpOnly: true,   
+                secure: process.env.NODE_ENV === "production", // Ensures it's sent over HTTPS in production
+                sameSite: "Strict", 
+                maxAge: 24 * 60 * 60 * 1000 // 1 day expiration
+            });
     
-            res.status(200).json({ success: true, message: "Email verified successfully." });
+            res.status(200).json({ success: true, message: "Email verified successfully.", user:{
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                isVerified: user.isVerified,
+                isOnboarded: false
+            } });
         } catch (error) {
             console.error("Error verifying email:", error);
             res.status(500).json({ success: false, message: "An error occurred during email verification." });

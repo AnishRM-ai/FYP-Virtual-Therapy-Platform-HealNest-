@@ -12,24 +12,37 @@ const therapistSchema = new mongoose.Schema(
         },
             specializations: [{
                 type: String,
-                enum: ['depression', 'anxiety', 'relationship', 'trauma', ]
+                enum: ['Depression', 'Anxiety', 'Relationship', 'Trauma', ]
             }],
             education: [{
                 degree: String,
                 institution: String,
                 year: Number
             }],
-            availability: [{
-                day: {
-                    type: String,
-                    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                },
-                slots: [{
-                    startTime: String,
-                    endTime: String,
-                    isBooked: Boolean
-                }]
-            }],
+            availability: [
+                {
+                    date: {
+                        type: String,
+                        format: "date" // ISO 8601 date format (YYYY-MM-DD)
+                    },
+                    slots: [
+                        {
+                            startTime: {
+                                type: String,
+                                format: "date-time" // ISO 8601 date-time format (YYYY-MM-DDTHH:MM:SSZ)
+                            },
+                            endTime: {
+                                type: String,
+                                format: "date-time" // ISO 8601 date-time format (YYYY-MM-DDTHH:MM:SSZ)
+                            },
+                            isBooked: {
+                                type: Boolean
+                            }
+                        }
+                    ]
+                }
+            ],
+            
             sessionPrice: {
                 type: Number
             },
