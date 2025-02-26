@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const passport = require('passport');
 const googleOAuthConfig = require('./config/googleOAuth');
@@ -49,8 +50,10 @@ app.get(
 
         console.log("Received state", req.query.state);
 
+        const token = jwt.sign({id: req.user._id, role: req.user.role}, process.env.JWT_SECRET, {expiresIn: "1d"});
+
         // Store the OAuth2 token in a cookie
-        res.cookie('oauthToken', req.session.oauthToken, {
+        res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "Strict",
