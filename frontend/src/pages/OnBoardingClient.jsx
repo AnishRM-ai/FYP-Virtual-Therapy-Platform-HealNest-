@@ -15,7 +15,7 @@ const ClientOnboarding = () => {
         medicalHistory: { conditions: [], medications: [], allergies: [], lastUpdated: "" }
     });
 
-    const {onboardClient} = useOnboardingStore();
+    const onboardClient = useOnboardingStore((state) => state.onboardClient);
     const handleNext = () => setActiveStep((prevStep) => prevStep + 1);
     const handleBack = () => setActiveStep((prevStep) => prevStep - 1);
      
@@ -23,10 +23,15 @@ const ClientOnboarding = () => {
         setFormData((prevData) => ({ ...prevData, [key]: value }));
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async(e) => {
+        e.preventDefault(); // Prevent the default form submission
         console.log("Final Data:", formData);
-        // API call to save client onboarding data
-        onboardClient(formData);
+        try {
+            await onboardClient(formData);
+           
+        } catch (error) {
+            console.error("Error submitting onboarding data:", error);
+        }
     };
 
     const getStepContent = (step) => {

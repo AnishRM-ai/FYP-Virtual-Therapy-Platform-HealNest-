@@ -3,8 +3,12 @@ const User = require('../models/User')
 const therapistSchema = new mongoose.Schema(
     {
         qualificationProof: {
-            type: [String],
-            default: null, // Default as null to clarify it can be empty
+           resume:{
+            type: String,
+           },
+           professionalLicense: {
+            type: String,
+           },
         },
         isTherapistVerified: {
             type: Boolean,
@@ -19,29 +23,29 @@ const therapistSchema = new mongoose.Schema(
                 institution: String,
                 year: Number
             }],
-            availability: [
-                {
-                    date: {
-                        type: String,
-                        format: "date" // ISO 8601 date format (YYYY-MM-DD)
+            availability: {
+                slot: [{
+                    day: { 
+                        type: String, 
+                        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                     },
-                    slots: [
-                        {
-                            startTime: {
-                                type: String,
-                                format: "date-time" // ISO 8601 date-time format (YYYY-MM-DDTHH:MM:SSZ)
-                            },
-                            endTime: {
-                                type: String,
-                                format: "date-time" // ISO 8601 date-time format (YYYY-MM-DDTHH:MM:SSZ)
-                            },
-                            isBooked: {
-                                type: Boolean
-                            }
-                        }
-                    ]
+                    startTime: String, // Format: "HH:mm"
+                    endTime: String,   // Format: "HH:mm"
+                    isAvailable: { type: Boolean, default: true }
+                }],
+                sessionDuration: { 
+                    type: Number, 
+                    default: 60 // minutes
+                },
+                breakBetweenSessions: { 
+                    type: Number, 
+                    default: 15 // minutes
+                },
+                timezone: { 
+                    type: String, 
+                    default: 'UTC' 
                 }
-            ],
+            },
             
             sessionPrice: {
                 type: Number

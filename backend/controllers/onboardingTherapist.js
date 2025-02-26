@@ -1,52 +1,85 @@
-const Therapist = require('../models/therapistDB');
 const User = require('../models/User');
-const upload = require('../middleware/multerConfig');
+const multer = require('multer');
+const path = require('path');
 
+// Configure Multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Save files in the 'uploads' folder
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  },
+});
 
+const upload = multer({ storage }).fields([
+  { name: 'resume', maxCount: 1 },
+  { name: 'professionalLicense', maxCount: 1 },
+]);
+
+// Onboard Therapist with File Uploads
 const onboardTherapist = async (req, res) => {
-    try {
-        if (!req.files) {
-            return res.status(400).json({ success: false, message: "Please submit your valid document." });
-        }
+  try {
+    // Handle file uploads using Multer
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: 'File upload failed', error: err.message });
+      }
 
-        const userId = req.userId;
-        const therapist = await User.findById(userId);
+      const {
+        specializations,
+        education,
+        availability,
+        sessionPrice,
+        languages,
+        paymentDetails,
+      } = req.body;
 
-        if (!therapist || therapist.role !== "therapist") {
-            return res.status(404).json({ success: false, message: "Therapist user not found." });
-        }
+      // Get the authenticated user's ID from the request
+      const userId = req.userId;
 
-        if (!therapist.isVerified) {
-            return res.status(400).json({ success: false, message: "Please verify your email." }); 
-        }
+      // Find the user in the database
+      const user = await User.findById(userId);
 
-        // Convert uploaded files to paths
-        const filePaths = req.files.map(file => file.path);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
 
-        // Parse JSON fields
-        const specializations = JSON.parse(req.body.specializations);
-        const education = JSON.parse(req.body.education);
-        const availability = JSON.parse(req.body.availability);
-        const sessionPrice = Number(req.body.sessionPrice);
-        const languages = JSON.parse(req.body.languages);
+      // Save file paths to the database
+      user.qualificationProof = {
+        resume: req.files['resume'] ? req.files['resume'][0].path : null,
+        professionalLicense: req.files['professionalLicense'] ? req.files['professionalLicense'][0].path : null,
+      };
 
-        // Update Therapist Model
-        therapist.qualificationProof = filePaths;
-        therapist.specializations = specializations;
-        therapist.education = education;
-        therapist.availability = availability;
-        therapist.sessionPrice = sessionPrice;
-        therapist.languages = languages;
-        therapist.isOnboarded = true;
+      // Update other fields
+      user.specializations = JSON.parse(specializations);
+      user.education = JSON.parse(education);
+      user.availability = JSON.parse(availability);
+      user.sessionPrice = JSON.parse(sessionPrice);
+      user.languages = JSON.parse(languages);
+      user.paymentDetails = JSON.parse(paymentDetails);
+      user.isOnboarded = true; // Mark the user as onboarded
 
-        await therapist.save();
+      // Save the updated therapist profile
+      await user.save();
 
-        res.status(200).json({ success: true, message: "Onboarding completed", therapist });
-
-    } catch (error) {
-        console.error("Onboarding error:", error);
-        res.status(500).json({ success: false, message: "An error occurred during onboarding." });
-    }
+      res.status(200).json({
+        success: true,
+        message: 'Therapist onboarding completed successfully!',
+        data: user,
+      });
+    });
+  } catch (error) {
+    console.error('Error during therapist onboarding:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to onboard therapist',
+      error: error.message,
+    });
+  }
 };
 
-module.exports = onboardTherapist;
+module.exports = {
+  onboardTherapist
+};

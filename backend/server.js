@@ -39,19 +39,24 @@ app.get(
     passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-// Google OAuth callback route
 app.get(
     '/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/login' }),
     (req, res) => {
-       
-
-        if(!req.user) {
-          return res.redirect('/login');
+        if (!req.user) {
+            return res.redirect('/login');
         }
 
         console.log("Received state", req.query.state);
-      
+
+        // Store the OAuth2 token in a cookie
+        res.cookie('oauthToken', req.session.oauthToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "Strict",
+            maxAge: 24 * 60 * 60 * 1000 // 1 day expiration
+        });
+
         // Redirect based on user role
         if (req.user.role === 'client') {
             res.redirect('http://localhost:5173/client-dashboard');

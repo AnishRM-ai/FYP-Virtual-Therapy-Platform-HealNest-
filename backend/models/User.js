@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const userSchema = new mongoose.Schema({
     fullname: {type:String},
     username: { type: String, required: false, unique: true, trim: true },
+    gender:{type: String},
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, select: false },
     oauthProvider: { type: String, enum: ['google', null], default: null },
@@ -17,6 +18,8 @@ const userSchema = new mongoose.Schema({
     passwordResetToken: { type: String },
     passwordResetTokenExpiresAt: { type: Date},
     lastLogin: {type: Date},
+
+    googleCalendarConnected: {type: Boolean, default: false},
 },
 { timestamps: true });
 

@@ -1,8 +1,11 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
-const Client = require('../models/clientdb'); // Import the Client model
+const Client = require('../models/clientdb');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
+// Google OAuth2 Strategy
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -12,13 +15,12 @@ passport.use(new GoogleStrategy({
   },
   async (req, accessToken, refreshToken, profile, done) => {
     try {
-      let role = 'client';  // Default role is client
-
+      let role = 'client';
       let user = await User.findOne({ email: profile.emails[0].value });
 
       if (!user) {
         if (role === 'client') {
-          user = new Client({  // Create a Client instead of a User
+          user = new Client({
             username: profile.emails[0].value.split('@')[0],
             fullname: profile.displayName,
             email: profile.emails[0].value,
@@ -38,9 +40,11 @@ passport.use(new GoogleStrategy({
             isVerified: true
           });
         }
-        
         await user.save();
       }
+
+      // Store OAuth2 token in a cookie
+      req.session.oauthToken = accessToken;
 
       return done(null, user);
     } catch (error) {

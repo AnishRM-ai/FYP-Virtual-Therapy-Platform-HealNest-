@@ -49,6 +49,7 @@ const VerifyEmail = () => {
     const response = await verifyEmail(verificationCode);
     toast.success("Email verified successfully.")
     console.log(response);
+    navigate('/signin');
     
     
   }catch (error){

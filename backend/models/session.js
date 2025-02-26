@@ -11,6 +11,11 @@ const sessionSchema = new mongoose.Schema({
         ref: 'Client',
         required: true
     },
+    calendarEventId:{
+        type: String, 
+        required: true
+    },
+
     scheduledTime: {
         type: Date,
         required: true
@@ -25,14 +30,16 @@ const sessionSchema = new mongoose.Schema({
         enum: ['scheduled', 'in-progress', 'completed', 'cancelled', 'no-show'],
         default: 'scheduled'
     },
-    sessionType: {
-        type: String,
-        enum: ['initial-consultation', 'follow-up', 'emergency'],
-        required: true
-    },
     meetingLink: {
         type: String,
         required: true
+    },
+    reminders:{
+        useDefault:{type:Boolean, default: true},
+        overrides:[{
+            method: {type: String, enum:['email', 'popup']},
+            minutes: Number
+        }]
     },
     payment: {
         amount: Number,
@@ -56,7 +63,7 @@ const sessionSchema = new mongoose.Schema({
             max: 5
         },
         comment: String,
-        givenAt: Date
+        givenAt: Date 
     },
     cancellation: {
         reason: String,

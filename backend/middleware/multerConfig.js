@@ -26,7 +26,10 @@ const upload = multer({
         }
 
     }
-}).array('qualificationProof', 3);
+}).fields([
+    {name: 'qualificationDocuments.resume', maxCount:1},
+    {name: 'qualificationDocuments.professionalLicense', maxCount: 1}
+]);
 
 
 module.exports = upload;

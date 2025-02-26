@@ -8,8 +8,8 @@ checkAuth} = require('../controllers/userAuth');
 const verifyEmail = require('../controllers/emailVerification');
 const verifyToken = require('../middleware/verifyToken');
 const rateLimit = require('express-rate-limit');
-const onboardTherapist = require('../controllers/onboardingTherapist');
-const authMiddleware = require('../middleware/authMiddleware');
+const {onboardTherapist} = require('../controllers/onboardingTherapist');
+const onboardClient = require('../controllers/onboardingClient');
 const upload = require('../middleware/multerConfig');
 const router = express.Router();
 
@@ -42,7 +42,9 @@ router.post('/therapist/register', registerTherapist);
 
 
 //Onboarding Routes
-router.post('/therapist/onboarding',verifyToken, upload,  onboardTherapist);
+router.post('/therapist/onboarding',verifyToken, onboardTherapist);
+
+router.post('/client/onboarding',verifyToken, onboardClient);
 
 
 module.exports = router;
