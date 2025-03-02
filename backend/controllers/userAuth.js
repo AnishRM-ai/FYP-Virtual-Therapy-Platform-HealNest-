@@ -231,7 +231,7 @@ const login = async (req, res) => {
             email: user.email,
             role: user.role,
             createdAt: user.createdAt,
-            isOnboarded: false,
+            isOnboarded:user.isOnboarded,
             lastLogin: user.lastLogin,
             isVerified: user.isVerified
         };
@@ -333,7 +333,27 @@ const checkAuth = async (req, res) => {
         console.log("Error in checkAuth", error);
         res.status(400).json({ success: false, message: error.message });
     }
-}
+};
+
+
+// Function to get a list of all users
+const getAllUsers = async (req, res) => {
+    try {
+        // Fetch all users from the database
+        const users = await User.find().select('-password'); // Exclude password field
+
+        // Check if there are any users
+        if (!users || users.length === 0) {
+            return res.status(404).json({ success: false, message: 'No users found.' });
+        }
+
+        // Return the list of users
+        res.status(200).json({ success: true, users });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ success: false, message: 'An error occurred while fetching users.' });
+    }
+};
 
 module.exports = {
     registerUser,
@@ -344,5 +364,6 @@ module.exports = {
     logout,       // Logout handler
     forgotPassword, //forgot password
     resetPassword,
-    checkAuth
+    checkAuth,
+    getAllUsers
 };

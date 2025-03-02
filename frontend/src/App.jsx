@@ -16,6 +16,7 @@ import OnboardingFlow from "./pages/onboardingtherapist";
 import AppointmentBooking from "./pages/booking.jsx";
 import ClientOnboarding from "./pages/OnBoardingClient.jsx";
 import FindTherapist from "./pages/therapistSearch.jsx";
+import HomePage from "./pages/homepage.jsx";
 
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
@@ -97,6 +98,7 @@ const App = () => {
         }}
       />
       <Routes>
+      <Route path="/home" element={<HomePage />} />
         <Route
           path="/signup"
           element={
@@ -113,6 +115,7 @@ const App = () => {
             </RedirectAuthenticatedUser>
           }
         />
+
         <Route path="/forgotpassword" element={<Forgotpassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />

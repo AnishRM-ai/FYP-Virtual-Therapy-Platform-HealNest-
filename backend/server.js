@@ -8,6 +8,7 @@ const cors = require('cors');
 const connectDB = require('./connection/connection');
 const authRoutes = require('./routes/authenticationRoutes');
 const cookieParser = require('cookie-parser');
+const calendarRoutes= require('./routes/calendar');
 
 const app = express();
 connectDB();
@@ -60,19 +61,15 @@ app.get(
             maxAge: 24 * 60 * 60 * 1000 // 1 day expiration
         });
 
-        // Redirect based on user role
-        if (req.user.role === 'client') {
-            res.redirect('http://localhost:5173/client-dashboard');
-        } else if (req.user.role === 'therapist') {
-            res.redirect('/therapist-dashboard');
-        } else {
-            res.redirect('/select-role');
-        }
+        
+            res.redirect('/signin');
+        
     }
 );
 
 // API Gateway for authentication
 app.use('/api/auth', authRoutes);
+app.use('/api/calendar', calendarRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on Port ${PORT}`);

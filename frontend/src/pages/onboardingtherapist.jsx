@@ -58,8 +58,12 @@ const TherapistOnboarding = () => {
 
  
   const handleGoogleCalendarConnect = () => {
-    // Add your Google Calendar API integration logic here
     console.log('Connecting to Google Calendar');
+
+    const googleAuthUrl = 'http://localhost:5555/api/calendar/auth/google';
+
+  // Open the URL in a new tab
+  window.open(googleAuthUrl, '_blank', 'width=600,height=600');
   };
 
   const daysOfWeek = [

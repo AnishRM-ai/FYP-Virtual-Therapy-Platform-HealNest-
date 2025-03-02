@@ -4,7 +4,8 @@ const {registerUser, registerAdmin, loginAdmin, registerTherapist,
     forgotPassword,
 logout,
 resetPassword, 
-checkAuth} = require('../controllers/userAuth');
+checkAuth,
+getAllUsers} = require('../controllers/userAuth');
 const verifyEmail = require('../controllers/emailVerification');
 const verifyToken = require('../middleware/verifyToken');
 const rateLimit = require('express-rate-limit');
@@ -28,6 +29,7 @@ router.post('/login', loginLimiter, login);
 router.post('/logout', logout);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);
+router.get('/users', getAllUsers);
 
 
 
