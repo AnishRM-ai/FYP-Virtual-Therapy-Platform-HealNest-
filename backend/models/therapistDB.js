@@ -23,29 +23,6 @@ const therapistSchema = new mongoose.Schema(
                 institution: String,
                 year: Number
             }],
-            availability: {
-                slot: [{
-                    day: { 
-                        type: String, 
-                        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                    },
-                    startTime: String, // Format: "HH:mm"
-                    endTime: String,   // Format: "HH:mm"
-                    isAvailable: { type: Boolean, default: true }
-                }],
-                sessionDuration: { 
-                    type: Number, 
-                    default: 60 // minutes
-                },
-                breakBetweenSessions: { 
-                    type: Number, 
-                    default: 15 // minutes
-                },
-                timezone: { 
-                    type: String, 
-                    default: 'UTC' 
-                }
-            },
             
             sessionPrice: {
                 type: Number
@@ -78,28 +55,6 @@ const therapistSchema = new mongoose.Schema(
                 type: String,
             }
         },
-        
-        feedbacks: [
-            {
-                clientId: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: 'Client',
-                },
-                rating: {
-                    type: Number,
-                    min: 1,
-                    max: 5,
-                },
-                comment: {
-                    type: String,
-                    trim: true,
-                },
-                date: {
-                    type: Date,
-                    default: Date.now,
-                },
-            },
-        ],
         paymentStatements: [
             {
                 amount: {

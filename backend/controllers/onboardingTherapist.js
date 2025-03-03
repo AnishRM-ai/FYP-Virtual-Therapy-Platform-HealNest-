@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Availability = require('../models/availability')
 const multer = require('multer');
 const path = require('path');
 
@@ -55,7 +56,6 @@ const onboardTherapist = async (req, res) => {
       // Update other fields
       user.specializations = JSON.parse(specializations);
       user.education = JSON.parse(education);
-      user.availability = JSON.parse(availability);
       user.sessionPrice = JSON.parse(sessionPrice);
       user.languages = JSON.parse(languages);
       user.paymentDetails = JSON.parse(paymentDetails);
@@ -64,10 +64,22 @@ const onboardTherapist = async (req, res) => {
       // Save the updated therapist profile
       await user.save();
 
+      const availabilityData = JSON.parse(availability);
+      const newAvailability = new Availability({
+        therapistId: user._id,
+        slots: availabilityData.slots,
+        timezone: availabilityData.timezone,
+      });
+
+      await newAvailability.save();
+
       res.status(200).json({
         success: true,
         message: 'Therapist onboarding completed successfully!',
-        data: user,
+        data: {
+          therapist: user,
+          availability: newAvailability,
+        },
       });
     });
   } catch (error) {

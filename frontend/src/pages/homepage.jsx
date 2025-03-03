@@ -36,12 +36,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-const navigate = useNavigate();
-
-const selectRole = () => {
-    navigate('/select-role');
-}
-
 const TherapistCard = ({ name, title, rating, reviews, specialty, price, mode }) => {
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -154,6 +148,16 @@ const HomePage = () => {
     }
   }, [prefersDarkMode]);
 
+  const navigate = useNavigate(); // Hook to navigate
+
+  const goToSignIn = () => {
+    navigate("/signin"); // Redirects to sign-in page
+  };
+
+  const goToRoleSelection = () => {
+    navigate("/select-role"); // Redirects to role selection page
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -207,8 +211,8 @@ const HomePage = () => {
               </MenuItem>
             </Menu>
             
-            <Button color="primary" sx={{ ml: 2 }}>Sign In</Button>
-            <Button variant="contained" color="primary" sx={{ ml: 2 }} onClick={selectRole}>
+            <Button color="primary" sx={{ ml: 2 }} onClick={goToSignIn}>Sign In</Button>
+            <Button variant="contained" color="primary" sx={{ ml: 2 }} onClick={goToRoleSelection}>
               Get Started
             </Button>
           </Toolbar>

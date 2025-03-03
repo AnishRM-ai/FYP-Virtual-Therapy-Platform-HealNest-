@@ -20,7 +20,7 @@ const TherapistOnboarding = () => {
     },
     specializations: [],
     education: [{ degree: '', institution: '', year: '' }],
-    availability: [{ date: '', slots: [{ startTime: '', endTime: '' }] }],
+    slots: [{ startTime: '', endTime: '' }],
     sessionPrice: 0,
     languages: [ ],
     paymentDetails: { provider: '', customerId: '' },
@@ -35,7 +35,7 @@ const TherapistOnboarding = () => {
       formDataToSend.append('professionalLicense', formData.qualificationDocuments.professionalLicense);
       formDataToSend.append('specializations', JSON.stringify(formData.specializations));
       formDataToSend.append('education', JSON.stringify(formData.education));
-      formDataToSend.append('availability', JSON.stringify(transformAvailability()));
+      formDataToSend.append('availability', JSON.stringify(formData.slots));
       formDataToSend.append('sessionPrice', formData.sessionPrice);
       formDataToSend.append('languages', JSON.stringify(formData.languages));
       formDataToSend.append('paymentDetails', JSON.stringify(formData.paymentDetails));
@@ -55,8 +55,6 @@ const TherapistOnboarding = () => {
   };
 
 
-
- 
   const handleGoogleCalendarConnect = () => {
     console.log('Connecting to Google Calendar');
 
@@ -64,33 +62,6 @@ const TherapistOnboarding = () => {
 
   // Open the URL in a new tab
   window.open(googleAuthUrl, '_blank', 'width=600,height=600');
-  };
-
-  const daysOfWeek = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
-  ];
-
-  const transformAvailability = () => {
-    const workingHours = formData.availability
-      .map((avail) => {
-        const date = new Date(avail.date);
-        const day = daysOfWeek[date.getDay()];
-
-        return avail.slots.map((slot) => ({
-          day,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          isAvailable: true
-        }));
-      })
-      .flat();
-
-    return {
-      workingHours,
-      sessionDuration: 60,
-      breakBetweenSessions: 15,
-      timezone: 'UTC'
-    };
   };
 
   const handleChange = (e) => {
