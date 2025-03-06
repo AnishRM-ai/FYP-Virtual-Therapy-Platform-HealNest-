@@ -121,7 +121,7 @@ const App = () => {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/therapist/onboarding" element={<OnboardingFlow />} />
         <Route path="/client/onboarding" element={<ClientOnboarding />} />
-        <Route path="/booking" element={<AppointmentBooking />} />
+        <Route path="/booking/:id" element={<AppointmentBooking />} />
         <Route path="/therapist-search" element={<FindTherapist />} />
 
         <Route
@@ -149,7 +149,7 @@ const App = () => {
           }
         />
         {/* Fallback route for unknown paths */}
-        <Route path="*" element={<Navigate to="/signin" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
       <Toaster />
     </Router>

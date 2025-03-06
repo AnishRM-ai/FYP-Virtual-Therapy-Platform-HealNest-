@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Paper, Alert, Container, Typography, TextField, Button, Stepper, Step, StepLabel, MenuItem, Select, InputLabel, FormControl, Box, IconButton, Chip
+  Paper, Alert, Container, Typography, TextField, Button, Stepper, Step, StepLabel, MenuItem, Select, InputLabel, FormControl, Box, IconButton, Chip, Checkbox, FormControlLabel
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import GoogleIcon from '@mui/icons-material/Google';
@@ -16,13 +16,13 @@ const TherapistOnboarding = () => {
   const [formData, setFormData] = useState({
     qualificationDocuments: {
       resume: null,
-      professionalLicense: null, // Allow up to 2 degree certificates
+      professionalLicense: null,
     },
     specializations: [],
     education: [{ degree: '', institution: '', year: '' }],
-    slots: [{ startTime: '', endTime: '' }],
+    slots: [{ startDateTime: '', endDateTime: '', isAvailable: true }],
     sessionPrice: 0,
-    languages: [ ],
+    languages: [],
     paymentDetails: { provider: '', customerId: '' },
   });
 
@@ -35,7 +35,7 @@ const TherapistOnboarding = () => {
       formDataToSend.append('professionalLicense', formData.qualificationDocuments.professionalLicense);
       formDataToSend.append('specializations', JSON.stringify(formData.specializations));
       formDataToSend.append('education', JSON.stringify(formData.education));
-      formDataToSend.append('availability', JSON.stringify(formData.slots));
+      formDataToSend.append('slots', JSON.stringify(formData.slots));
       formDataToSend.append('sessionPrice', formData.sessionPrice);
       formDataToSend.append('languages', JSON.stringify(formData.languages));
       formDataToSend.append('paymentDetails', JSON.stringify(formData.paymentDetails));
@@ -43,25 +43,22 @@ const TherapistOnboarding = () => {
       const result = await onboardTherapist(formDataToSend);
       if (result.success) {
         console.log('Form Data Submitted:', formDataToSend);
-        toast.success('Onboarding Successful! Welcome to HealNest.')
+        toast.success('Onboarding Successful! Welcome to HealNest.');
       } else {
         console.error('Onboarding failed:', result.message);
       }
     }
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
   };
+
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-
   const handleGoogleCalendarConnect = () => {
     console.log('Connecting to Google Calendar');
-
     const googleAuthUrl = 'http://localhost:5555/api/calendar/auth/google';
-
-  // Open the URL in a new tab
-  window.open(googleAuthUrl, '_blank', 'width=600,height=600');
+    window.open(googleAuthUrl, '_blank', 'width=600,height=600');
   };
 
   const handleChange = (e) => {
@@ -82,7 +79,6 @@ const TherapistOnboarding = () => {
       },
     }));
   };
-
 
   const handleSpecializationChange = (specialization) => {
     setFormData((prevData) => {
@@ -107,35 +103,20 @@ const TherapistOnboarding = () => {
     }));
   };
 
-  const handleAvailabilityChange = (dateIndex, slotIndex, e) => {
+  const handleAvailabilityChange = (slotIndex, e) => {
     const { name, value } = e.target;
-    const availability = [...formData.availability]; 
-    
-    if(name === "date"){
-      availability[dateIndex][name] = value;
-    } else {
-      availability[dateIndex].slots[slotIndex][name] = value;
-    }
+    const updatedSlots = [...formData.slots];
+    updatedSlots[slotIndex][name] = value;
     setFormData((prevData) => ({
       ...prevData,
-      availability,
+      slots: updatedSlots,
     }));
   };
 
-  const addNewAvailability = () => {
+  const addNewSlot = () => {
     setFormData((prevData) => ({
       ...prevData,
-      availability: [...prevData.availability, { date: '', slots: [{ startTime: '', endTime: '' }] }],
-    }));
-  };
-
-  const addNewSlot = (dateIndex) => {
-    const availability = [...formData.availability];
-    availability[dateIndex].slots.push({ startTime: '', endTime: '' });
-
-    setFormData((prevData) => ({
-      ...prevData,
-      availability,
+      slots: [...prevData.slots, { startDateTime: '', endDateTime: '', isAvailable: true }],
     }));
   };
 
@@ -159,7 +140,6 @@ const TherapistOnboarding = () => {
       case 0:
         return (
           <Box>
-            {/* Resume Upload */}
             <Box marginBottom={2} display="flex" alignItems="center">
               <input
                 accept="application/pdf"
@@ -179,8 +159,6 @@ const TherapistOnboarding = () => {
                   : 'Upload Resume'}
               </Typography>
             </Box>
-
-            {/* Professional License Upload */}
             <Box marginBottom={2} display="flex" alignItems="center">
               <input
                 accept="application/pdf,image/*"
@@ -200,8 +178,6 @@ const TherapistOnboarding = () => {
                   : 'Upload Professional License'}
               </Typography>
             </Box>
-
-            
           </Box>
         );
       case 1:
@@ -267,13 +243,7 @@ const TherapistOnboarding = () => {
         );
       case 2:
         return (
-          <Box sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            width: '100%',
-            my: 4
-          }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', my: 4 }}>
             <Paper
               elevation={0}
               sx={{
@@ -287,27 +257,17 @@ const TherapistOnboarding = () => {
                 mb: 4
               }}
             >
-              <CalendarMonthIcon
-                sx={{
-                  fontSize: 48,
-                  color: 'primary.main',
-                  mb: 2
-                }}
-              />
-
+              <CalendarMonthIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
               <Typography variant="h6" gutterBottom fontWeight="bold">
                 Connect Your Calendar
               </Typography>
-
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                 To manage your therapy sessions efficiently, please connect your Google Calendar.
                 This will help you set your availability and schedule appointments.
               </Typography>
-
               <Alert severity="info" sx={{ mb: 3 }}>
                 You need to connect your Google account to enable session scheduling and availability management.
               </Alert>
-
               <Button
                 variant="contained"
                 size="large"
@@ -327,59 +287,50 @@ const TherapistOnboarding = () => {
                 Connect Google Calendar
               </Button>
             </Paper>
-
-            {/* Existing availability form */}
-            {formData.availability.map((avail, dateIndex) => (
-              <Box key={dateIndex} marginBottom={2} sx={{ width: '100%' }}>
+            {formData.slots.map((slot, slotIndex) => (
+              <Box key={slotIndex} marginBottom={2} sx={{ width: '100%' }}>
                 <TextField
-                  name="date"
-                  label="Date"
-                  type="date"
-                  value={avail.date}
-                  onChange={(e) => handleAvailabilityChange(dateIndex, 0, e)}
+                  name="startDateTime"
+                  label="Start Date & Time"
+                  type="datetime-local"
+                  value={slot.startDateTime}
+                  onChange={(e) => handleAvailabilityChange(slotIndex, e)}
                   fullWidth
                   margin="normal"
                   InputLabelProps={{
                     shrink: true,
                   }}
                 />
-                {avail.slots.map((slot, slotIndex) => (
-                  <Box key={slotIndex} marginBottom={2}>
-                    <TextField
-                      name="startTime"
-                      label="Start Time"
-                      type="datetime-local"
-                      value={slot.startTime}
-                      onChange={(e) => handleAvailabilityChange(dateIndex, slotIndex, e)}
-                      fullWidth
-                      margin="normal"
-                      InputLabelProps={{
-                        shrink: true,
-                      }}
+                <TextField
+                  name="endDateTime"
+                  label="End Date & Time"
+                  type="datetime-local"
+                  value={slot.endDateTime}
+                  onChange={(e) => handleAvailabilityChange(slotIndex, e)}
+                  fullWidth
+                  margin="normal"
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={slot.isAvailable}
+                      onChange={(e) =>
+                        handleAvailabilityChange(slotIndex, {
+                          target: { name: 'isAvailable', value: e.target.checked },
+                        })
+                      }
                     />
-                    <TextField
-                      name="endTime"
-                      label="End Time"
-                      type="datetime-local"
-                      value={slot.endTime}
-                      onChange={(e) => handleAvailabilityChange(dateIndex, slotIndex, e)}
-                      fullWidth
-                      margin="normal"
-                      InputLabelProps={{
-                        shrink: true,
-                      }}
-                    />
-                  </Box>
-                ))}
-                <Button
-                  variant="outlined"
-                  onClick={() => addNewSlot(dateIndex)}
-                  sx={{ mt: 1 }}
-                >
-                  Add New Slot
-                </Button>
+                  }
+                  label="Available"
+                />
               </Box>
             ))}
+            <Button variant="contained" color="primary" onClick={addNewSlot}>
+              Add New Slot
+            </Button>
           </Box>
         );
       case 3:
@@ -421,12 +372,7 @@ const TherapistOnboarding = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      py: 4
-    }}>
+    <Container maxWidth="md" sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', py: 4 }}>
       <Typography variant="h4" gutterBottom align='center'>
         Therapist Onboarding
       </Typography>

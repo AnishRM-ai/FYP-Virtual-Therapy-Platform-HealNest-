@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -11,88 +13,312 @@ import {
   AppBar,
   Toolbar,
   Badge,
-  Divider
+  TextField,
+  CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
 import {
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
   Notifications as NotificationsIcon,
   Videocam as VideocamIcon,
   AccessTime as AccessTimeIcon,
-  AttachMoney as MoneyIcon
+  AttachMoney as MoneyIcon,
+  CalendarMonth as CalendarIcon,
+  ExpandMore as ExpandMoreIcon,
+  BugReport as BugReportIcon
 } from '@mui/icons-material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const BookingSystem = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date(2025, 2, 3)); // March 3, 2025
-  const [selectedTime, setSelectedTime] = useState('9:00 AM');
-
-  // Generate week dates
-  const getWeekDates = (current) => {
-    const week = [];
-    const firstDay = new Date(current);
-    firstDay.setDate(firstDay.getDate() - firstDay.getDay()); // Get Sunday
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(firstDay);
-      date.setDate(date.getDate() + i);
-      week.push(date);
-    }
-    return week;
-  };
-
-  const weekDates = getWeekDates(selectedDate);
+  const { id } = useParams();
+  const [therapist, setTherapist] = useState(null);
+  const [availability, setAvailability] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [selectedTime, setSelectedTime] = useState('');
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
   
-  const timeSlots = [
-    ['9:00 AM', '10:00 AM', '11:30 AM'],
-    ['2:00 PM', '3:30 PM', '5:00 PM']
-  ];
+  // Debug state
+  const [debugData, setDebugData] = useState({
+    therapistRawData: null,
+    availabilityRawData: null,
+    apiErrors: [],
+    lastApiCall: null
+  });
 
-  const getDayName = (date) => {
-    return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+  useEffect(() => {
+    const fetchTherapist = async () => {
+      try {
+        setDebugData(prev => ({...prev, lastApiCall: `GET http://localhost:5555/api/therapist/${id}`}));
+        const response = await axios.get(`http://localhost:5555/api/therapist/${id}`);
+        setTherapist(response.data.therapist);
+        setDebugData(prev => ({...prev, therapistRawData: response.data}));
+      } catch (error) {
+        console.error('Error fetching therapist:', error);
+        setDebugData(prev => ({
+          ...prev, 
+          apiErrors: [...prev.apiErrors, {
+            endpoint: `GET http://localhost:5555/api/therapist/${id}`,
+            error: error.message,
+            time: new Date().toISOString()
+          }]
+        }));
+      }
+    };
+
+    const fetchAvailability = async () => {
+      try {
+        setDebugData(prev => ({...prev, lastApiCall: `GET http://localhost:5555/api/therapist/${id}/slots`}));
+        const response = await axios.get(`http://localhost:5555/api/therapist/${id}/slots`);
+        
+        // Store raw data for debugging
+        setDebugData(prev => ({...prev, availabilityRawData: response.data}));
+        
+        // Extract all slots from all availability entries
+        let allSlots = [];
+        if (response.data.availability && Array.isArray(response.data.availability)) {
+          // Loop through each availability entry and extract slots
+          response.data.availability.forEach(availabilityItem => {
+            if (availabilityItem.slots && Array.isArray(availabilityItem.slots)) {
+              allSlots = [...allSlots, ...availabilityItem.slots];
+            }
+          });
+        }
+        
+        setAvailability(allSlots);
+      } catch (error) {
+        console.error('Error fetching availability:', error);
+        setDebugData(prev => ({
+          ...prev, 
+          apiErrors: [...prev.apiErrors, {
+            endpoint: `GET http://localhost:5555/api/therapist/${id}/slots`,
+            error: error.message,
+            time: new Date().toISOString()
+          }]
+        }));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Call the fetch functions
+    fetchTherapist();
+    fetchAvailability();
+  }, [id]); // Added missing closing brace and dependency array
+
+  useEffect(() => {
+    const selectedDateStr = selectedDate.format('YYYY-MM-DD');
+    const slotsForSelectedDate = availability.filter(slot => {
+      const slotDateStr = dayjs(slot.startDateTime).format('YYYY-MM-DD');
+      return slotDateStr === selectedDateStr && slot.isAvailable;
+    });
+
+    setAvailableSlots(slotsForSelectedDate);
+  }, [selectedDate, availability]);
+
+  const handleBookSession = async () => {
+    if (!selectedTime) {
+      return;
+    }
+
+    setBooking(true);
+    const bookingData = {
+      therapistId: id,
+      startDateTime: selectedTime,
+      endDateTime: dayjs(selectedTime).add(50, 'minute').toISOString()
+    };
+    
+    setDebugData(prev => ({
+      ...prev, 
+      lastApiCall: `POST http://localhost:5555/api/bookings`,
+      lastBookingAttempt: bookingData
+    }));
+    
+    try {
+      const response = await axios.post(`http://localhost:5555/api/bookings`, bookingData);
+      setBookingSuccess(true);
+      setDebugData(prev => ({...prev, lastBookingResponse: response.data}));
+    } catch (error) {
+      console.error('Error booking session:', error);
+      setDebugData(prev => ({
+        ...prev, 
+        apiErrors: [...prev.apiErrors, {
+          endpoint: `POST http://localhost:5555/api/bookings`,
+          error: error.message,
+          data: bookingData,
+          time: new Date().toISOString()
+        }]
+      }));
+    } finally {
+      setBooking(false);
+    }
   };
 
-  const isSelectedDate = (date) => {
-    return date.toDateString() === selectedDate.toDateString();
-  };
+  // Debug component
+  const DebugPanel = () => (
+    <Paper sx={{ p: 2, mt: 4, mb: 2, border: '1px dashed #999' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <BugReportIcon sx={{ mr: 1, color: 'warning.main' }} />
+        <Typography variant="h6">Debug Information</Typography>
+      </Box>
+      
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Therapist Data (API Response)</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+            {JSON.stringify(debugData.therapistRawData, null, 2) || "No data fetched yet"}
+          </pre>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Availability Data (API Response)</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+            {JSON.stringify(debugData.availabilityRawData, null, 2) || "No data fetched yet"}
+          </pre>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Processed Slots for Selected Date</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" sx={{ mb: 1 }}>Selected Date: {selectedDate.format('YYYY-MM-DD')}</Typography>
+          <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+            {JSON.stringify(availableSlots, null, 2) || "No slots available"}
+          </pre>
+        </AccordionDetails>
+      </Accordion>
+
+      {debugData.lastBookingAttempt && (
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Last Booking Attempt</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+              {JSON.stringify(debugData.lastBookingAttempt, null, 2)}
+            </pre>
+            {debugData.lastBookingResponse && (
+              <>
+                <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>Response:</Typography>
+                <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+                  {JSON.stringify(debugData.lastBookingResponse, null, 2)}
+                </pre>
+              </>
+            )}
+          </AccordionDetails>
+        </Accordion>
+      )}
+
+      {debugData.apiErrors.length > 0 && (
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>API Errors ({debugData.apiErrors.length})</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+              {JSON.stringify(debugData.apiErrors, null, 2)}
+            </pre>
+          </AccordionDetails>
+        </Accordion>
+      )}
+
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Component State</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box sx={{ mb: 1 }}>
+            <Typography variant="body2">Loading: {loading.toString()}</Typography>
+            <Typography variant="body2">Booking: {booking.toString()}</Typography>
+            <Typography variant="body2">Booking Success: {bookingSuccess.toString()}</Typography>
+            <Typography variant="body2">Selected Time: {selectedTime || "None"}</Typography>
+            <Typography variant="body2">Available Slots Count: {availableSlots.length}</Typography>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+    </Paper>
+  );
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!therapist) {
+    return (
+      <Box sx={{ maxWidth: 1200, margin: 'auto', p: 3 }}>
+        <Typography>Therapist not found</Typography>
+        <DebugPanel />
+      </Box>
+    );
+  }
+
+  if (bookingSuccess) {
+    return (
+      <Box sx={{ maxWidth: 1200, margin: 'auto', p: 3 }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Booking Confirmed!</Typography>
+          <Typography variant="body1">
+            Your session with {therapist.fullname} has been scheduled for{' '}
+            {dayjs(selectedTime).format('MMMM D, YYYY [at] h:mm A')}.
+          </Typography>
+          <Button 
+            variant="contained" 
+            sx={{ mt: 3 }}
+            onClick={() => window.location.href = '/dashboard'}
+          >
+            Return to Dashboard
+          </Button>
+        </Paper>
+        <DebugPanel />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ maxWidth: 1200, margin: 'auto', p: 3 }}>
-      {/* Header */}
       <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 4 }}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Avatar sx={{ bgcolor: 'black', width: 32, height: 32 }}>H</Avatar>
-            <Typography variant="h6">HealNest</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton>
-              <Badge color="error" variant="dot">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar>JD</Avatar>
-              <Typography>John Doe</Typography>
-            </Box>
-          </Box>
+          <Typography variant="h6">HealNest</Typography>
+          <IconButton>
+            <Badge color="error" variant="dot">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
         </Toolbar>
       </AppBar>
 
       <Grid container spacing={4}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 4, mb: 4 }}>
-            {/* Therapist Info */}
             <Box sx={{ display: 'flex', gap: 3, mb: 4 }}>
-              <Avatar sx={{ width: 80, height: 80 }}>SJ</Avatar>
+              <Avatar sx={{ width: 80, height: 80 }}>{therapist.fullname.charAt(0)}</Avatar>
               <Box>
-                <Typography variant="h5" sx={{ mb: 1 }}>Dr. Sarah Johnson</Typography>
+                <Typography variant="h5" sx={{ mb: 1 }}>{therapist.fullname}</Typography>
                 <Typography color="text.secondary" sx={{ mb: 1 }}>
-                  Clinical Psychologist, MA, Ph.D
+                  {therapist.education.map(edu => `${edu.degree}, ${edu.institution} (${edu.year})`).join(', ')}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <Rating value={4.9} readOnly precision={0.1} />
+                  <Rating value={therapist.rating} readOnly precision={0.1} />
                   <Typography variant="body2" color="text.secondary">
-                    4.9 (120+ reviews)
+                    {therapist.rating} ({therapist.reviews} reviews)
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 3 }}>
@@ -106,121 +332,96 @@ const BookingSystem = () => {
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <MoneyIcon fontSize="small" />
-                    <Typography variant="body2">120 per session</Typography>
+                    <Typography variant="body2">${therapist.sessionPrice} per session</Typography>
                   </Box>
                 </Box>
               </Box>
             </Box>
 
-            {/* Calendar */}
-            <Typography variant="h6" sx={{ mb: 2 }}>Select Date & Time</Typography>
-            <Box sx={{ mb: 4 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <IconButton>
-                  <ChevronLeftIcon />
-                </IconButton>
-                <IconButton>
-                  <ChevronRightIcon />
-                </IconButton>
-              </Box>
-              <Grid container spacing={1} sx={{ mb: 4 }}>
-                {weekDates.map((date) => (
-                  <Grid item xs key={date.toISOString()}>
-                    <Button
-                      fullWidth
-                      onClick={() => setSelectedDate(date)}
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        p: 2,
-                        backgroundColor: isSelectedDate(date) ? 'primary.main' : 'transparent',
-                        color: isSelectedDate(date) ? 'white' : 'inherit',
-                        '&:hover': {
-                          backgroundColor: isSelectedDate(date) ? 'primary.dark' : 'action.hover'
-                        }
-                      }}
-                    >
-                      <Typography variant="caption">{getDayName(date)}</Typography>
-                      <Typography variant="body1">{date.getDate()}</Typography>
-                    </Button>
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>About</Typography>
+            <Typography variant="body1" sx={{ mb: 3 }}>{therapist.bio || 'No bio available.'}</Typography>
 
-            {/* Time Slots */}
-            <Typography variant="h6" sx={{ mb: 2 }}>Available Time Slots</Typography>
-            <Box>
-              {timeSlots.map((row, rowIndex) => (
-                <Box key={rowIndex} sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                  {row.map((time) => (
-                    <Button
-                      key={time}
-                      variant={selectedTime === time ? 'contained' : 'outlined'}
-                      onClick={() => setSelectedTime(time)}
-                      sx={{ minWidth: 120 }}
-                    >
-                      {time}
-                    </Button>
-                  ))}
-                </Box>
-              ))}
-            </Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>Select Date</Typography>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                value={selectedDate}
+                onChange={(newValue) => setSelectedDate(newValue)}
+                // disablePast
+                sx={{ width: '100%', mb: 3 }}
+              />
+            </LocalizationProvider>
+
+            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Available Time Slots</Typography>
+            {availableSlots.length > 0 ? (
+              <Box>
+                {availableSlots.map((slot, index) => (
+                  <Button
+                    key={index}
+                    variant={selectedTime === slot.startDateTime ? 'contained' : 'outlined'}
+                    onClick={() => setSelectedTime(slot.startDateTime)}
+                    sx={{ minWidth: 120, mr: 2, mb: 2 }}
+                  >
+                    {dayjs(slot.startDateTime).format('HH:mm')} - {dayjs(slot.endDateTime).format('HH:mm')}
+                  </Button>
+                ))}
+              </Box>
+            ) : (
+              <Typography>No slots available for the selected date.</Typography>
+            )}
           </Paper>
         </Grid>
 
-        {/* Booking Summary */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 4 }}>
+          <Paper sx={{ p: 4, position: 'sticky', top: 20 }}>
             <Typography variant="h6" sx={{ mb: 3 }}>Booking Summary</Typography>
-            <Box sx={{ mb: 3 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={4}>
-                  <Typography color="text.secondary">Date</Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <Typography>
-                    {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            
+            {selectedTime ? (
+              <>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="body1">Date:</Typography>
+                  <Typography variant="body1" fontWeight="medium">
+                    {dayjs(selectedTime).format('MMMM D, YYYY')}
                   </Typography>
-                </Grid>
-                <Grid item xs={4}>
-                  <Typography color="text.secondary">Time</Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <Typography>{selectedTime}</Typography>
-                </Grid>
-                <Grid item xs={4}>
-                  <Typography color="text.secondary">Duration</Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <Typography>50 minutes</Typography>
-                </Grid>
-                <Grid item xs={4}>
-                  <Typography color="text.secondary">Session Fee</Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <Typography>$120</Typography>
-                </Grid>
-              </Grid>
-            </Box>
-            <Button
-              variant="contained"
-              fullWidth
-              size="large"
-              sx={{ mt: 2 }}
-              onClick={() => alert('Booking confirmed!')}
-            >
-              Confirm Booking
-            </Button>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="body1">Time:</Typography>
+                  <Typography variant="body1" fontWeight="medium">
+                    {dayjs(selectedTime).format('h:mm A')} - {dayjs(selectedTime).add(50, 'minute').format('h:mm A')}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                  <Typography variant="body1">Price:</Typography>
+                  <Typography variant="body1" fontWeight="medium">
+                    ${therapist.sessionPrice}
+                  </Typography>
+                </Box>
+                
+                <Button 
+                  variant="contained" 
+                  fullWidth 
+                  size="large"
+                  onClick={handleBookSession}
+                  disabled={booking || !selectedTime}
+                >
+                  {booking ? <CircularProgress size={24} /> : 'Book Session'}
+                </Button>
+              </>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <CalendarIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 2 }} />
+                <Typography color="text.secondary">
+                  Select a date and time to view booking details
+                </Typography>
+              </Box>
+            )}
           </Paper>
         </Grid>
       </Grid>
-
-      <Box sx={{ mt: 4, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
-          © 2025 MindfulCare. All rights reserved.
-        </Typography>
-      </Box>
+      
+      {/* Debug panel added at the bottom */}
+      <DebugPanel />
     </Box>
   );
 };

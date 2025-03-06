@@ -9,6 +9,7 @@ const connectDB = require('./connection/connection');
 const authRoutes = require('./routes/authenticationRoutes');
 const cookieParser = require('cookie-parser');
 const calendarRoutes= require('./routes/calendar');
+const therapistRoutes = require('./routes/therapistroute');
 
 const app = express();
 connectDB();
@@ -70,6 +71,7 @@ app.get(
 // API Gateway for authentication
 app.use('/api/auth', authRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api', therapistRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on Port ${PORT}`);

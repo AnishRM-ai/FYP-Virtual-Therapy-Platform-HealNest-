@@ -31,7 +31,7 @@ const onboardTherapist = async (req, res) => {
       const {
         specializations,
         education,
-        availability,
+        slots,
         sessionPrice,
         languages,
         paymentDetails,
@@ -64,10 +64,10 @@ const onboardTherapist = async (req, res) => {
       // Save the updated therapist profile
       await user.save();
 
-      const availabilityData = JSON.parse(availability);
+      const availabilityData = JSON.parse(slots);
       const newAvailability = new Availability({
         therapistId: user._id,
-        slots: availabilityData.slots,
+        slots: availabilityData,
         timezone: availabilityData.timezone,
       });
 
