@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authenticationRoutes');
 const cookieParser = require('cookie-parser');
 const calendarRoutes= require('./routes/calendar');
 const therapistRoutes = require('./routes/therapistroute');
+const sessionRoutes = require('./routes/sessionRoutes');
 
 const app = express();
 connectDB();
@@ -72,6 +73,7 @@ app.get(
 app.use('/api/auth', authRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api', therapistRoutes);
+app.use('/session', sessionRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on Port ${PORT}`);
