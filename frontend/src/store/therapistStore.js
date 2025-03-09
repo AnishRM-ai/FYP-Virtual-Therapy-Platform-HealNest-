@@ -33,6 +33,17 @@ const useTherapistStore = create((set) => ({
         }catch (err) {
             console.error('Error fetching availability: ', err);
         }
+    },
+    fetchTherapistsById: async (therapistId) => {
+        set({loading: true, error:null});
+        try{
+            const res = await axios.get(`http://localhost:5555/api/therapist/${therapistId}`);
+            set({therapist: res.data.therapists});
+        } catch (err) {
+            set({error: 'Failed to fetch therapists', err});
+        } finally{
+            set({ loading: false});
+        }
     }
 }));
 

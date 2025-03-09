@@ -55,6 +55,9 @@ const createSession = async (req, res) => {
             start: {dateTime: scheduledTime, timeZone: 'UTC'},
             end: { dateTime: new Date(new Date(scheduledTime).getTime() + duration * 60000).toISOString(), timeZone: 'UTC' },
             attendees:[],
+            conferenceData:{
+                createRequest: {requestId: `${Date.now()}`}
+            },
             reminders: {useDefault: true}
         }
 
@@ -83,5 +86,88 @@ const createSession = async (req, res) => {
     }
 };
 
-module.exports  = {createSession};
+const getTherapistSession= async(req, res) => {
+     
+    try{
+        const therapistId = req.userId;
+        const sessions = await Session.find({ therapistId})
+        .populate("clientId", "fullname email")
+        .populate("therapistId", "fullname")
+        .sort({scheduledTime: 1});
+
+        if(!sessions.length) {
+            return res.status(200).json({ success: true, message: "No sessions found."});
+        }
+
+        res.status(200).json({success: true, message:"Therapist session fetched success", sessions});
+
+
+    }catch (err){
+        console.log("Error fetching therapist sessions:", err);
+        res.status(500).json({success: false, message:"Internal server error"});    }
+};
+
+const cancelSession = async ( req, res) => {
+    try{
+        const {sessionId} = req.params;
+        const { cancelledBy, reason} = req.body;
+
+        if(!cancelledBy || !['client', 'therapist'].includes(cancelledBy)){
+            return res.status(400).json({ success: false, message: "Invalid cancellation initiator." });
+        }
+
+        const session = await Session.findById(sessionId);
+        if(!session){
+            return res.status(404).json({success: false, message:"Session not found"});
+
+        }
+
+        if(session.status === "cancelled") {
+            return res.status(400).json({success: false, message:"Session is already cancelled."});
+
+        }
+
+        //get therapst oauth token
+        const tokens = await GoogleToken.findOne({userId: therapistId});
+        if(!tokens) {
+            return res.status(401).json({success: false, message: "therapist is not found."});
+
+        }
+
+        const oauth2Client = new google.auth.OAuth2();
+        oauth2Client.setCredentials({
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token
+        });
+
+        const calendar = google.calendar({version: "v3", auth: oauth2Client});
+
+        //Delete event from calendar.
+        if (session.calendarEventId) {
+            await calendar.events.delete({
+                calendarId: "primary",
+                eventId: session.calendarEventId
+            });
+        }
+
+        // Update session status to "cancelled"
+        session.status = "cancelled";
+        session.cancellation = {
+            reason,
+            cancelledBy,
+            cancelledAt: new Date()
+        };
+
+        await session.save();
+
+        res.status(200).json({ success: true, message: "Session cancelled successfully.", session });
+    } catch (error){
+        console.error("Error cancelling session:", error);
+        res.status(500).json({ success: false, message: "Error cancelling session", error });
+
+    }
+};
+
+module.exports  = {createSession,
+                     getTherapistSession};
 
