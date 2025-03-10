@@ -27,10 +27,12 @@ import {
   Favorite as HeartIcon,
   Create as WriteIcon
 } from '@mui/icons-material';
+import { useAuthStore } from '../store/authStore';
 
 const drawerWidth = 240;
 
 const Dashboard = () => {
+  const{user} = useAuthStore();
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon /> },
     { text: 'Sessions', icon: <EventIcon /> },
@@ -117,7 +119,7 @@ const Dashboard = () => {
       <Box component="main" sx={{ flexGrow: 1, p: 3, bgcolor: '#f8f9fa', minHeight: '100vh' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4, alignItems: 'center' }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 600 }}>Welcome back, Sarah</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>Welcome back, {user.fullname}</Typography>
             <Typography variant="subtitle1" color="text.secondary">
               Track your progress and maintain your mental well-being
             </Typography>

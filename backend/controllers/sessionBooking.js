@@ -42,6 +42,13 @@ const createSession = async (req, res) => {
     try{
         const {therapistId, clientId, scheduledTime, duration, meetingLink, payment} = req.body;
 
+        const therapist = await User.findById(therapistId).select('fullname', 'email');
+        const client = await User.findById(clientId).select('fullname', 'email');
+
+        if(!therapist || !client) {
+            return res.status(404).json({success: false, message:"Therapist or client not found."});
+        }
+
          // Get the OAuth2 client
          const oauth2Client = await getOAuth2Client(req.userId);
 
@@ -54,7 +61,10 @@ const createSession = async (req, res) => {
             description: "A virtual therapy session.",
             start: {dateTime: scheduledTime, timeZone: 'UTC'},
             end: { dateTime: new Date(new Date(scheduledTime).getTime() + duration * 60000).toISOString(), timeZone: 'UTC' },
-            attendees:[],
+            attendees:[ 
+                {email: therapist.email, displayName: therapist.fullname},
+                {email: client.email, displayName: client.fullname}
+            ],
             conferenceData:{
                 createRequest: {requestId: `${Date.now()}`}
             },

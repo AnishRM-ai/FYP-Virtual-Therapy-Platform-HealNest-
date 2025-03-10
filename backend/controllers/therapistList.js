@@ -57,8 +57,10 @@ const availability = async (req, res) => {
 };
 
 
+
+
 module.exports = {
     getAllTherapist,
     getTherapistById,
-    availability
+    availability,
 };

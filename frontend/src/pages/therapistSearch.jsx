@@ -155,6 +155,8 @@ const TherapistFinder = () => {
   }
 
   return (
+  
+      
     <Box sx={{ backgroundColor: mode === 'light' ? '#ffffff' : 'background.default', minHeight: '100vh' }}>
       <CssBaseline />
       <NavBar mode={mode} setMode={setMode} />

@@ -2,6 +2,8 @@ import {create} from 'zustand';
 import axios from 'axios';
 
 
+axios.defaults.withCredentials = true;
+
 const useTherapistStore = create((set) => ({
     therapists: [],
     availability: {},
@@ -25,7 +27,8 @@ const useTherapistStore = create((set) => ({
             availability: {...state.availability, [therapistId]: []}
         }));
         try{
-            const res = await axios.get(`http://localhost:5555/api/therapist/${therapistId}/availability`);
+            const res = await axios.get(`http://localhost:5555/api/therapist/${therapistId}/slots`);
+            console.log(`Fetched availability for ${therapistId}:`, res.data);
             set((state)=> ({
                 availability: { ...state.availability, [therapistId]: res.data.availability}
             }));
@@ -44,6 +47,18 @@ const useTherapistStore = create((set) => ({
         } finally{
             set({ loading: false});
         }
+    },
+    fetchAuthenticatedTherapist: async () => {
+        set({loading: true , error: null});
+          try{
+            const response = await axios.get(`http://localhost:5555/api/auth/check-auth`);
+            set({therapist: response.data.user});
+          } catch (error) {
+            set({ error: 'Failed to fetch therapist data.'});
+            throw error;
+          } finally{
+            set({ loading: false});
+          }
     }
 }));
 

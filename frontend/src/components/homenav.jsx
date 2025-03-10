@@ -84,17 +84,19 @@ const NavBar = ({ mode, setMode }) => {
     navigate('/therapist-search');
   };
 
+  const gohome = () => {
+    navigate('/home');
+  };
   return (
     <ThemeProvider theme={theme}>
       <AppBar position="sticky" color="default" elevation={1}>
         <Toolbar>
-          <Typography variant="h6" color="primary" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" color="primary" component="div" sx={{ flexGrow: 1 }} onClick={gohome}>
             HealNest
           </Typography>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
             <Button color="inherit" onClick={findTherapist}>Find Therapist</Button>
             <Button color="inherit">How It Works</Button>
-            <Button color="inherit">Resources</Button>
             <Button color="inherit">About Us</Button>
           </Box>
 

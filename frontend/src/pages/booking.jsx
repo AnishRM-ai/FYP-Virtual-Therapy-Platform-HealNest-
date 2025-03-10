@@ -15,9 +15,7 @@ import {
   Badge,
   TextField,
   CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  CssBaseline
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -25,13 +23,12 @@ import {
   AccessTime as AccessTimeIcon,
   AttachMoney as MoneyIcon,
   CalendarMonth as CalendarIcon,
-  ExpandMore as ExpandMoreIcon,
-  BugReport as BugReportIcon
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import NavBar from '../components/homenav';
 
 const BookingSystem = () => {
   const { id } = useParams();
@@ -43,42 +40,26 @@ const BookingSystem = () => {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [mode, setMode] = useState('light');
   
-  // Debug state
-  const [debugData, setDebugData] = useState({
-    therapistRawData: null,
-    availabilityRawData: null,
-    apiErrors: [],
-    lastApiCall: null
-  });
 
   useEffect(() => {
     const fetchTherapist = async () => {
       try {
-        setDebugData(prev => ({...prev, lastApiCall: `GET http://localhost:5555/api/therapist/${id}`}));
+        
         const response = await axios.get(`http://localhost:5555/api/therapist/${id}`);
         setTherapist(response.data.therapist);
-        setDebugData(prev => ({...prev, therapistRawData: response.data}));
+      
       } catch (error) {
         console.error('Error fetching therapist:', error);
-        setDebugData(prev => ({
-          ...prev, 
-          apiErrors: [...prev.apiErrors, {
-            endpoint: `GET http://localhost:5555/api/therapist/${id}`,
-            error: error.message,
-            time: new Date().toISOString()
-          }]
-        }));
+       
       }
     };
 
     const fetchAvailability = async () => {
       try {
-        setDebugData(prev => ({...prev, lastApiCall: `GET http://localhost:5555/api/therapist/${id}/slots`}));
+      
         const response = await axios.get(`http://localhost:5555/api/therapist/${id}/slots`);
-        
-        // Store raw data for debugging
-        setDebugData(prev => ({...prev, availabilityRawData: response.data}));
         
         // Extract all slots from all availability entries
         let allSlots = [];
@@ -94,14 +75,6 @@ const BookingSystem = () => {
         setAvailability(allSlots);
       } catch (error) {
         console.error('Error fetching availability:', error);
-        setDebugData(prev => ({
-          ...prev, 
-          apiErrors: [...prev.apiErrors, {
-            endpoint: `GET http://localhost:5555/api/therapist/${id}/slots`,
-            error: error.message,
-            time: new Date().toISOString()
-          }]
-        }));
       } finally {
         setLoading(false);
       }
@@ -134,124 +107,21 @@ const BookingSystem = () => {
       endDateTime: dayjs(selectedTime).add(50, 'minute').toISOString()
     };
     
-    setDebugData(prev => ({
-      ...prev, 
-      lastApiCall: `POST http://localhost:5555/api/bookings`,
-      lastBookingAttempt: bookingData
-    }));
+
+  
     
     try {
       const response = await axios.post(`http://localhost:5555/api/bookings`, bookingData);
       setBookingSuccess(true);
-      setDebugData(prev => ({...prev, lastBookingResponse: response.data}));
     } catch (error) {
       console.error('Error booking session:', error);
-      setDebugData(prev => ({
-        ...prev, 
-        apiErrors: [...prev.apiErrors, {
-          endpoint: `POST http://localhost:5555/api/bookings`,
-          error: error.message,
-          data: bookingData,
-          time: new Date().toISOString()
-        }]
-      }));
     } finally {
       setBooking(false);
     }
   };
 
-  // Debug component
-  const DebugPanel = () => (
-    <Paper sx={{ p: 2, mt: 4, mb: 2, border: '1px dashed #999' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <BugReportIcon sx={{ mr: 1, color: 'warning.main' }} />
-        <Typography variant="h6">Debug Information</Typography>
-      </Box>
-      
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Therapist Data (API Response)</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-            {JSON.stringify(debugData.therapistRawData, null, 2) || "No data fetched yet"}
-          </pre>
-        </AccordionDetails>
-      </Accordion>
 
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Availability Data (API Response)</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-            {JSON.stringify(debugData.availabilityRawData, null, 2) || "No data fetched yet"}
-          </pre>
-        </AccordionDetails>
-      </Accordion>
-
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Processed Slots for Selected Date</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" sx={{ mb: 1 }}>Selected Date: {selectedDate.format('YYYY-MM-DD')}</Typography>
-          <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-            {JSON.stringify(availableSlots, null, 2) || "No slots available"}
-          </pre>
-        </AccordionDetails>
-      </Accordion>
-
-      {debugData.lastBookingAttempt && (
-        <Accordion>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography>Last Booking Attempt</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-              {JSON.stringify(debugData.lastBookingAttempt, null, 2)}
-            </pre>
-            {debugData.lastBookingResponse && (
-              <>
-                <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>Response:</Typography>
-                <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-                  {JSON.stringify(debugData.lastBookingResponse, null, 2)}
-                </pre>
-              </>
-            )}
-          </AccordionDetails>
-        </Accordion>
-      )}
-
-      {debugData.apiErrors.length > 0 && (
-        <Accordion>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography>API Errors ({debugData.apiErrors.length})</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <pre style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-              {JSON.stringify(debugData.apiErrors, null, 2)}
-            </pre>
-          </AccordionDetails>
-        </Accordion>
-      )}
-
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Component State</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box sx={{ mb: 1 }}>
-            <Typography variant="body2">Loading: {loading.toString()}</Typography>
-            <Typography variant="body2">Booking: {booking.toString()}</Typography>
-            <Typography variant="body2">Booking Success: {bookingSuccess.toString()}</Typography>
-            <Typography variant="body2">Selected Time: {selectedTime || "None"}</Typography>
-            <Typography variant="body2">Available Slots Count: {availableSlots.length}</Typography>
-          </Box>
-        </AccordionDetails>
-      </Accordion>
-    </Paper>
-  );
+ 
 
   if (loading) {
     return (
@@ -265,7 +135,7 @@ const BookingSystem = () => {
     return (
       <Box sx={{ maxWidth: 1200, margin: 'auto', p: 3 }}>
         <Typography>Therapist not found</Typography>
-        <DebugPanel />
+        
       </Box>
     );
   }
@@ -287,23 +157,18 @@ const BookingSystem = () => {
             Return to Dashboard
           </Button>
         </Paper>
-        <DebugPanel />
+      
       </Box>
     );
   }
+   
 
   return (
-    <Box sx={{ maxWidth: 1200, margin: 'auto', p: 3 }}>
-      <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 4 }}>
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Typography variant="h6">HealNest</Typography>
-          <IconButton>
-            <Badge color="error" variant="dot">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+      <Box sx={{ backgroundColor: mode === 'light' ? '#ffffff' : 'background.default', minHeight: '100vh' }}>
+        <CssBaseline />
+      <NavBar mode={mode} setMode={setMode}/>
+   
+      <Box sx={{ maxWidth: 1200, margin: 'auto', p: 3 }}>
 
       <Grid container spacing={4}>
         <Grid item xs={12} md={8}>
@@ -346,7 +211,7 @@ const BookingSystem = () => {
               <DatePicker
                 value={selectedDate}
                 onChange={(newValue) => setSelectedDate(newValue)}
-                // disablePast
+                disablePast
                 sx={{ width: '100%', mb: 3 }}
               />
             </LocalizationProvider>
@@ -420,8 +285,7 @@ const BookingSystem = () => {
         </Grid>
       </Grid>
       
-      {/* Debug panel added at the bottom */}
-      <DebugPanel />
+      </Box>
     </Box>
   );
 };

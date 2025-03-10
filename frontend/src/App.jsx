@@ -135,17 +135,17 @@ const App = () => {
         <Route
           path="/client-dashboard"
           element={
-            <RedirectAuthenticatedUser>
+            
               <ClientDashboardPage />
-            </RedirectAuthenticatedUser>
+         
           }
         />
         <Route
           path="/therapist-dashboard"
           element={
-            <RedirectAuthenticatedUser>
+           
               <TherapistDashboardPage />
-            </RedirectAuthenticatedUser>
+            
           }
         />
         {/* Fallback route for unknown paths */}
