@@ -15,7 +15,8 @@ import {
   Badge,
   TextField,
   CircularProgress,
-  CssBaseline
+  CssBaseline,
+  duration
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -29,6 +30,8 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import NavBar from '../components/homenav';
+import {useAuthStore} from '../store/authStore';
+import toast from 'react-hot-toast';
 
 const BookingSystem = () => {
   const { id } = useParams();
@@ -37,10 +40,12 @@ const BookingSystem = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [selectedTime, setSelectedTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [meetingLink, setMeetingLink] = useState('');
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [mode, setMode] = useState('light');
+  const {user} = useAuthStore();
   
 
   useEffect(() => {
@@ -83,7 +88,7 @@ const BookingSystem = () => {
     // Call the fetch functions
     fetchTherapist();
     fetchAvailability();
-  }, [id]); // Added missing closing brace and dependency array
+  }, [id]); 
 
   useEffect(() => {
     const selectedDateStr = selectedDate.format('YYYY-MM-DD');
@@ -103,18 +108,27 @@ const BookingSystem = () => {
     setBooking(true);
     const bookingData = {
       therapistId: id,
-      startDateTime: selectedTime,
-      endDateTime: dayjs(selectedTime).add(50, 'minute').toISOString()
+      clientId: user._id,
+      scheduledTime: selectedTime,
+      duration: 50,
+      payment:{
+        amount: therapist.sessionPrice,
+        currency: 'Npr',
+        status:'pending',
+      },
     };
     
-
-  
-    
     try {
-      const response = await axios.post(`http://localhost:5555/api/bookings`, bookingData);
-      setBookingSuccess(true);
+      const response = await axios.post(`http://localhost:5555/session/create`, bookingData);
+      if(response.data.success)  {
+        setBookingSuccess(true);
+        setMeetingLink(response.data.session.meetingLink);
+      }
+      
+     
     } catch (error) {
       console.error('Error booking session:', error);
+      toast.error('Failed to book the session. Please try again.');
     } finally {
       setBooking(false);
     }
@@ -149,10 +163,13 @@ const BookingSystem = () => {
             Your session with {therapist.fullname} has been scheduled for{' '}
             {dayjs(selectedTime).format('MMMM D, YYYY [at] h:mm A')}.
           </Typography>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+          Meeting Link: <a href={meetingLink} target="_blank" rel="noopener noreferrer">{meetingLink}</a>
+        </Typography>
           <Button 
             variant="contained" 
             sx={{ mt: 3 }}
-            onClick={() => window.location.href = '/dashboard'}
+            onClick={() => window.location.href = '/signin'}
           >
             Return to Dashboard
           </Button>

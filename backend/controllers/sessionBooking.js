@@ -30,7 +30,7 @@ const getOAuth2Client = async (userId) => {
             tokenData.expiry_date = credentials.expiry_date;
             await tokenData.save();
         } catch (err) {
-            console.err('Error Refreshing access token: ', err);
+            console.error('Error Refreshing access token: ', err);
             throw new Error('Google authentication failed, please reconnect.');
         }
     }
@@ -40,17 +40,17 @@ const getOAuth2Client = async (userId) => {
 // create a new session and sync with google calendar.
 const createSession = async (req, res) => {
     try{
-        const {therapistId, clientId, scheduledTime, duration, meetingLink, payment} = req.body;
+        const {therapistId, clientId, scheduledTime, duration, payment} = req.body;
 
-        const therapist = await User.findById(therapistId).select('fullname', 'email');
-        const client = await User.findById(clientId).select('fullname', 'email');
+        const therapist = await User.findById(therapistId).select('fullname email');
+        const client = await User.findById(clientId).select('fullname email');
 
         if(!therapist || !client) {
             return res.status(404).json({success: false, message:"Therapist or client not found."});
         }
 
          // Get the OAuth2 client
-         const oauth2Client = await getOAuth2Client(req.userId);
+         const oauth2Client = await getOAuth2Client(therapistId);
 
          // Initialize the Google Calendar API client
          const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
@@ -66,16 +66,19 @@ const createSession = async (req, res) => {
                 {email: client.email, displayName: client.fullname}
             ],
             conferenceData:{
-                createRequest: {requestId: `${Date.now()}`}
+                createRequest: {requestId: `${Date.now()}`, conferenceSolutionKey: {type:'hangoutsMeet'},}
             },
             reminders: {useDefault: true}
-        }
+        };
 
     
     const calendarEvent = await calendar.events.insert({
         calendarId: 'primary',
-        resource: event
+        resource: event,
+        conferenceDataVersion: 1 
     });
+
+    const meetingLink = calendarEvent.data.hangoutLink;
 
     const newSession = new Session({
         therapistId,
