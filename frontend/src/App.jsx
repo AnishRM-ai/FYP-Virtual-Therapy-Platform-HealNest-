@@ -17,6 +17,8 @@ import AppointmentBooking from "./pages/booking.jsx";
 import ClientOnboarding from "./pages/OnBoardingClient.jsx";
 import FindTherapist from "./pages/therapistSearch.jsx";
 import HomePage from "./pages/homepage.jsx";
+import AvailabilityManagement from "./therapistDash/setAvailability.jsx";
+import SessionsManagement from "./therapistDash/sessionList.jsx";
 
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
@@ -123,6 +125,9 @@ const App = () => {
         <Route path="/client/onboarding" element={<ClientOnboarding />} />
         <Route path="/booking/:id" element={<AppointmentBooking />} />
         <Route path="/therapist-search" element={<FindTherapist />} />
+        <Route path="/availability" element={<AvailabilityManagement/>} />
+        <Route path="/sessionList" element={<SessionsManagement/>} />
+        <Route path="/sessionList/:id" element={<SessionsManagement/>} />
 
         <Route
           path="/select-role"

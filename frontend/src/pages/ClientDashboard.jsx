@@ -3,15 +3,8 @@ import {
   Box,
   Card,
   CardContent,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Typography,
   Avatar,
-  Toolbar,
   Divider
 } from '@mui/material';
 import {
@@ -23,16 +16,16 @@ import {
   Timer as TimerIcon,
   CheckCircle as CompletedIcon,
   LocalFireDepartment as StreakIcon,
-  Notifications as NotificationsIcon,
   Favorite as HeartIcon,
   Create as WriteIcon
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
-
-const drawerWidth = 240;
+import DashboardLayout from '../clientDash/layout';
+import TopBar from '../clientDash/topbar';
 
 const Dashboard = () => {
-  const{user} = useAuthStore();
+  const { user } = useAuthStore();
+  
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon /> },
     { text: 'Sessions', icon: <EventIcon /> },
@@ -76,62 +69,22 @@ const Dashboard = () => {
     'Write down three things you\'re grateful for'
   ];
 
+  const drawerWidth = 240;
+
   return (
-    <Box sx={{ display: 'flex' }}>
-      {/* Sidebar */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            bgcolor: '#f8f9fa'
-          },
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            HealNest
+    <DashboardLayout menuItems={menuItems}>
+      <TopBar drawerWidth={drawerWidth} />
+      
+      {/* Content container - adds top padding to account for fixed AppBar */}
+      <Box sx={{ mt: 8, p: 3 }}>
+        {/* Welcome Message */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>Welcome back, {user?.fullname || "Guest"}</Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Track your progress and maintain your mental well-being
           </Typography>
-        </Toolbar>
-        <Divider />
-        <List>
-          {menuItems.map((item) => (
-            <ListItem
-              button
-              key={item.text}
-              sx={{
-                mb: 1,
-                borderRadius: '0 8px 8px 0',
-                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
-
-      {/* Main content */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3, bgcolor: '#f8f9fa', minHeight: '100vh' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4, alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 600 }}>Welcome back, {user.fullname}</Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              Track your progress and maintain your mental well-being
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <IconButton>
-              <NotificationsIcon />
-            </IconButton>
-            <Avatar />
-          </Box>
         </Box>
-
+        
         {/* Stats Grid */}
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, mb: 4 }}>
           {statsData.map((stat, index) => (
@@ -222,7 +175,7 @@ const Dashboard = () => {
           </Box>
         </Box>
       </Box>
-    </Box>
+    </DashboardLayout>
   );
 };
 

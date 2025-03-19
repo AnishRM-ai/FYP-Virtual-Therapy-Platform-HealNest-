@@ -98,7 +98,7 @@ const createSession = async (req, res) => {
     res.status(500).json({success: false, message: 'Error creating session', err});
     }
 };
-
+//Get therapist session
 const getTherapistSession= async(req, res) => {
      
     try{
@@ -120,31 +120,29 @@ const getTherapistSession= async(req, res) => {
         res.status(500).json({success: false, message:"Internal server error"});    }
 };
 
-const cancelSession = async ( req, res) => {
-    try{
-        const {sessionId} = req.params;
-        const { cancelledBy, reason} = req.body;
+//Session Cancellation function.
+const cancelSession = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const { cancelledBy, reason } = req.body;
 
-        if(!cancelledBy || !['client', 'therapist'].includes(cancelledBy)){
+        if (!cancelledBy || !['client', 'therapist'].includes(cancelledBy)) {
             return res.status(400).json({ success: false, message: "Invalid cancellation initiator." });
         }
 
         const session = await Session.findById(sessionId);
-        if(!session){
-            return res.status(404).json({success: false, message:"Session not found"});
-
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
         }
 
-        if(session.status === "cancelled") {
-            return res.status(400).json({success: false, message:"Session is already cancelled."});
-
+        if (session.status === "cancelled") {
+            return res.status(400).json({ success: false, message: "Session is already cancelled." });
         }
 
-        //get therapst oauth token
-        const tokens = await GoogleToken.findOne({userId: therapistId});
-        if(!tokens) {
-            return res.status(401).json({success: false, message: "therapist is not found."});
-
+        // Get therapist's OAuth token
+        const tokens = await GoogleToken.findOne({ userId: session.therapistId });
+        if (!tokens) {
+            return res.status(401).json({ success: false, message: "Therapist is not connected to Google." });
         }
 
         const oauth2Client = new google.auth.OAuth2();
@@ -153,9 +151,9 @@ const cancelSession = async ( req, res) => {
             refresh_token: tokens.refresh_token
         });
 
-        const calendar = google.calendar({version: "v3", auth: oauth2Client});
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-        //Delete event from calendar.
+        // Delete event from the therapist's calendar
         if (session.calendarEventId) {
             await calendar.events.delete({
                 calendarId: "primary",
@@ -174,13 +172,59 @@ const cancelSession = async ( req, res) => {
         await session.save();
 
         res.status(200).json({ success: true, message: "Session cancelled successfully.", session });
-    } catch (error){
+    } catch (error) {
         console.error("Error cancelling session:", error);
         res.status(500).json({ success: false, message: "Error cancelling session", error });
+    }
+};
 
+const updateTherapistNotes = async (req, res) => {
+    const{sessionId} = req.params;
+    const {therapistNotes} = req.body;
+    const therapistId = req.userId
+    try{
+        const session = await Session.findOneAndUpdate(
+            {_id: sessionId, therapistId},//only assigned therapist can update.
+            {$set: {'notes.therapistNotes': therapistNotes}},
+            {new: true, runValidators: true} // retrun updated documnets and validate input.
+        );
+
+        if(!session) {
+            return res.status(404).json({success: false, message:'sesssion not found.'});
+        }
+
+        res.status(200).json({success: true, message:'Therapist notes updated successfully', session});
+    } catch(error){
+        console.error('Error updating therapist notes: ', error);
+        res.status(500).json({success: false, message:'Internal server error'});
+    }
+};
+
+const setSessionStatusToCompleted = async (req, res) => {
+    const { sessionId } = req.params; // Retrieve sessionId from the URL params
+    const therapistId = req.userId; // Assuming the therapist ID is stored in the request (e.g., from JWT token)
+    
+    try {
+        const session = await Session.findOneAndUpdate(
+            { _id: sessionId, therapistId }, // Ensure only the assigned therapist can update the session
+            { $set: { status: 'completed' } }, // Update session status to 'completed'
+            { new: true, runValidators: true } // Return updated document and validate input
+        );
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: 'Session not found or unauthorized access.' });
+        }
+
+        res.status(200).json({ success: true, message: 'Session status updated to completed', session });
+    } catch (error) {
+        console.error('Error updating session status:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
 
 module.exports  = {createSession,
-                     getTherapistSession};
+                     getTherapistSession,
+                    cancelSession,
+                updateTherapistNotes,
+            setSessionStatusToCompleted};
 

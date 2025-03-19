@@ -53,8 +53,6 @@ const sessionSchema = new mongoose.Schema({
     notes: {
         clientNotes: String, // visible to client
         therapistNotes: String, // private notes for therapist
-        diagnosis: String,
-        treatmentPlan: String
     },
     feedback: {
         rating: {
