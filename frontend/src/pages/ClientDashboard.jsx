@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Avatar,
-  Divider
+  Divider,
+  CircularProgress,
+  Stack
 } from '@mui/material';
+import dayjs from 'dayjs';
 import {
   Dashboard as DashboardIcon,
   Event as EventIcon,
@@ -20,35 +23,30 @@ import {
   Create as WriteIcon
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
+import useClientSessionStore from '../store/clientStore';
 import DashboardLayout from '../clientDash/layout';
 import TopBar from '../clientDash/topbar';
 
 const Dashboard = () => {
-  const { user } = useAuthStore();
-  
-  const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon /> },
-    { text: 'Sessions', icon: <EventIcon /> },
-    { text: 'Journal', icon: <JournalIcon /> },
-    { text: 'Mood Tracker', icon: <MoodTrackerIcon /> }
-  ];
+  const { client, sessions=[], loading, error, fetchSessions, fetchAuthenticatedClient } = useClientSessionStore();
+
+  useEffect(() => {
+    fetchAuthenticatedClient();
+  }, [fetchAuthenticatedClient]);
+
+  useEffect(() => {
+    if (client?._id) {
+      fetchSessions(client._id);
+    }
+  }, [client, fetchSessions]);
+
+ 
 
   const statsData = [
     { title: 'Current Mood', value: 'Positive', icon: <MoodIcon />, color: '#4CAF50' },
     { title: 'Journal Entries', value: '28', icon: <TimerIcon /> },
     { title: 'Sessions Complete', value: '12', icon: <CompletedIcon /> },
     { title: 'Streak', value: '7 days', icon: <StreakIcon />, color: '#FF9800' }
-  ];
-
-  const upcomingSessions = [
-    {
-      name: 'Dr. Emily Wilson',
-      time: 'Jan 15, 2025 • 2:00 PM'
-    },
-    {
-      name: 'Dr. Michael Chen',
-      time: 'Jan 22, 2025 • 3:30 PM'
-    }
   ];
 
   const journalEntries = [
@@ -72,19 +70,19 @@ const Dashboard = () => {
   const drawerWidth = 240;
 
   return (
-    <DashboardLayout menuItems={menuItems}>
+    <DashboardLayout>
       <TopBar drawerWidth={drawerWidth} />
-      
+
       {/* Content container - adds top padding to account for fixed AppBar */}
       <Box sx={{ mt: 8, p: 3 }}>
         {/* Welcome Message */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600 }}>Welcome back, {user?.fullname || "Guest"}</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>Welcome back, {client?.fullname || "Guest"}</Typography>
           <Typography variant="subtitle1" color="text.secondary">
             Track your progress and maintain your mental well-being
           </Typography>
         </Box>
-        
+
         {/* Stats Grid */}
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, mb: 4 }}>
           {statsData.map((stat, index) => (
@@ -146,17 +144,35 @@ const Dashboard = () => {
             <Card sx={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Upcoming Sessions</Typography>
-                {upcomingSessions.map((session, index) => (
-                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
-                    <Avatar />
-                    <Box>
-                      <Typography variant="subtitle2">{session.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {session.time}
-                      </Typography>
-                    </Box>
-                  </Box>
-                ))}
+                {loading && <CircularProgress />}
+                {error && <Typography color="error">{error}</Typography>}
+                <Stack>
+                  {sessions
+                    .filter(session => session.status === 'scheduled') // Filter sessions by status
+                    .map((session) => (
+                      <Box key={session._id} sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
+                          {session.therapistId.fullname.charAt(0)}
+                        </Avatar>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="subtitle1" fontWeight="medium">
+                            Dr. {session.therapistId.fullname} - {session.status}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Therapy Session
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                          <Typography variant="subtitle2" fontWeight="medium">
+                            {dayjs(session.scheduledTime).format('YYYY-MM-DD h:mm A')}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {session.duration} minutes
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                </Stack>
               </CardContent>
             </Card>
 

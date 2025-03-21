@@ -1,24 +1,35 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, IconButton, Menu, MenuItem } from '@mui/material';
-import { Palette as PaletteIcon, LightMode as LightModeIcon, DarkMode as DarkModeIcon } from '@mui/icons-material';
+import { AppBar, Toolbar, Typography, Button, Box, IconButton, Menu, MenuItem, Avatar } from '@mui/material';
+import { Palette as PaletteIcon, LightMode as LightModeIcon, DarkMode as DarkModeIcon, AccountCircle, ArrowDropDown } from '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
-const NavBar = ({ mode, setMode }) => {
+const NavBar = ({ mode, setMode, isAuthenticated = false, user = null }) => {
   const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
+  const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
+  
+  const themeMenuOpen = Boolean(anchorEl);
+  const userMenuOpen = Boolean(userMenuAnchorEl);
 
   const handleThemeMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleMenuClose = () => {
+  const handleUserMenuClick = (event) => {
+    setUserMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleThemeMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchorEl(null);
   };
 
   const handleThemeChange = (newMode) => {
     setMode(newMode);
-    handleMenuClose();
+    handleThemeMenuClose();
   };
 
   const theme = useMemo(
@@ -87,11 +98,29 @@ const NavBar = ({ mode, setMode }) => {
   const gohome = () => {
     navigate('/home');
   };
+
+  const goToDashboard = () => {
+    navigate('/dashboard');
+    handleUserMenuClose();
+  };
+
+  const handleLogout = () => {
+    // Implement logout functionality here
+    // This would typically involve clearing auth tokens and redirecting
+    handleUserMenuClose();
+    navigate('/home');
+  };
+
+  const handleProfile = () => {
+    navigate('/profile');
+    handleUserMenuClose();
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <AppBar position="sticky" color="default" elevation={1}>
         <Toolbar>
-          <Typography variant="h6" color="primary" component="div" sx={{ flexGrow: 1 }} onClick={gohome}>
+          <Typography variant="h6" color="primary" component="div" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={gohome}>
             HealNest
           </Typography>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
@@ -103,9 +132,9 @@ const NavBar = ({ mode, setMode }) => {
           <IconButton
             onClick={handleThemeMenuClick}
             color="primary"
-            aria-controls={open ? 'theme-menu' : undefined}
+            aria-controls={themeMenuOpen ? 'theme-menu' : undefined}
             aria-haspopup="true"
-            aria-expanded={open ? 'true' : undefined}
+            aria-expanded={themeMenuOpen ? 'true' : undefined}
           >
             <PaletteIcon />
           </IconButton>
@@ -113,8 +142,8 @@ const NavBar = ({ mode, setMode }) => {
           <Menu
             id="theme-menu"
             anchorEl={anchorEl}
-            open={open}
-            onClose={handleMenuClose}
+            open={themeMenuOpen}
+            onClose={handleThemeMenuClose}
             MenuListProps={{
               'aria-labelledby': 'theme-button',
             }}
@@ -129,12 +158,64 @@ const NavBar = ({ mode, setMode }) => {
             </MenuItem>
           </Menu>
 
-          <Button color="primary" sx={{ ml: 2 }} onClick={goToSignIn}>
-            Sign In
-          </Button>
-          <Button variant="contained" color="primary" sx={{ ml: 2 }} onClick={goToRoleSelection}>
-            Get Started
-          </Button>
+          {isAuthenticated && user ? (
+            <>
+              <Button 
+                color="inherit" 
+                onClick={goToDashboard}
+                sx={{ ml: 2 }}
+              >
+                Dashboard
+              </Button>
+              <Box 
+                sx={{ 
+                  ml: 2, 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 50,
+                  padding: '4px 12px',
+                }}
+                onClick={handleUserMenuClick}
+              >
+                <Avatar 
+                  sx={{ width: 32, height: 32, mr: 1 }}
+                  alt={user.name}
+                  src={user.avatar}
+                >
+                  {user.name ? user.name.charAt(0).toUpperCase() : <AccountCircle />}
+                </Avatar>
+                <Typography variant="body2" sx={{ mr: 1 }}>
+                  {user.name}
+                </Typography>
+                <ArrowDropDown />
+              </Box>
+              <Menu
+                id="user-menu"
+                anchorEl={userMenuAnchorEl}
+                open={userMenuOpen}
+                onClose={handleUserMenuClose}
+                MenuListProps={{
+                  'aria-labelledby': 'user-menu-button',
+                }}
+              >
+                <MenuItem onClick={handleProfile}>Profile</MenuItem>
+                <MenuItem onClick={goToDashboard}>Dashboard</MenuItem>
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+              </Menu>
+            </>
+          ) : (
+            <>
+              <Button color="primary" sx={{ ml: 2 }} onClick={goToSignIn}>
+                Sign In
+              </Button>
+              <Button variant="contained" color="primary" sx={{ ml: 2 }} onClick={goToRoleSelection}>
+                Get Started
+              </Button>
+            </>
+          )}
         </Toolbar>
       </AppBar>
     </ThemeProvider>

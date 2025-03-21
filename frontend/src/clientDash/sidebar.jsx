@@ -10,9 +10,31 @@ import {
   Divider
 } from '@mui/material';
 
+import {
+  Dashboard as DashboardIcon,
+  Event as EventIcon,
+  Book as JournalIcon,
+  Timeline as MoodTrackerIcon,
+  SentimentSatisfiedAlt as MoodIcon,
+  Timer as TimerIcon,
+  CheckCircle as CompletedIcon,
+  LocalFireDepartment as StreakIcon,
+  Favorite as HeartIcon,
+  Create as WriteIcon
+} from '@mui/icons-material';
+
 const drawerWidth = 240;
 
-const Sidebar = ({ menuItems }) => {
+// Define the menu items globally
+export const menuItems = [
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+  { text: 'Sessions', icon: <EventIcon />, path: '/clientsessionList' },
+  { text: 'Journal', icon: <JournalIcon />, path: '/journal' },
+  { text: 'Mood Tracker', icon: <MoodTrackerIcon />, path: '/mood-tracker' },
+  
+];
+
+const Sidebar = () => {
   return (
     <Drawer
       variant="permanent"
@@ -37,6 +59,8 @@ const Sidebar = ({ menuItems }) => {
           <ListItem
             button
             key={item.text}
+            component="a"
+            href={item.path}  // Ensure each menu item links correctly
             sx={{
               mb: 1,
               borderRadius: '0 8px 8px 0',

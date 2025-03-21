@@ -100,7 +100,7 @@ const useTherapistStore = create((set) => ({
         set({ loading: true, error: null });
         try {
             // Send a DELETE request to remove the slot
-            const response = await axios.delete('http://localhost:5555/api/therapist/availability/slot', {
+            const response = await axios.delete('http://localhost:5555/api/therapist/delete/slot', {
                 data: { startDateTime }
             });
 
@@ -159,7 +159,7 @@ const useTherapistStore = create((set) => ({
      markSessionComplete: async (sessionId) => {
         set({ loading: true, error: null });
         try {
-            const response = await axios.put(`http://localhost:5555/session/status${sessionId}`);
+            const response = await axios.put(`http://localhost:5555/session/status/${sessionId}`);
             // Optionally, update the session state after successful update
             set((state) => {
                 const updatedSessions = state.sessions.map(session =>
@@ -175,5 +175,7 @@ const useTherapistStore = create((set) => ({
         }
     }
 }));
+
+
 
 export default useTherapistStore;

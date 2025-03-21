@@ -222,9 +222,32 @@ const setSessionStatusToCompleted = async (req, res) => {
     }
 };
 
+
+// Get client sessions
+const getClientSessions = async (req, res) => {
+    try{
+        const clientId = req.userId;
+        const sessions = await Session.find({clientId})
+        .populate("clientId", "fullname")
+        .populate("therapistId", "fullname email")
+        .sort({scheduledTime: 1});
+
+        if(!sessions.length) {
+            return res.status(200).json({ success: true, message: "No sessions found."});
+        }
+
+        res.status(200).json({success: true, message:"Therapist session fetched success", sessions});
+
+
+    }catch (err){
+        console.log("Error fetching therapist sessions:", err);
+        res.status(500).json({success: false, message:"Internal server error"});    }
+};
+
 module.exports  = {createSession,
                      getTherapistSession,
                     cancelSession,
                 updateTherapistNotes,
-            setSessionStatusToCompleted};
+            setSessionStatusToCompleted,
+        getClientSessions};
 

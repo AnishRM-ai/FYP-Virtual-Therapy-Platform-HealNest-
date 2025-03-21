@@ -151,6 +151,38 @@ const deleteAvailability = async (req, res) => {
     }
 };
 
+const updateAvailabilityAfterBooking = async (therapistId, startDateTime, endDateTime) => {
+    try {
+        const availability = await OpenSlot.findOne({ therapistId });
+        
+        if (!availability) {
+            throw new Error('Availability not found for this therapist.');
+        }
+        
+        let slotUpdated = false;
+        
+        availability.slots = availability.slots.map(slot => {
+            if (
+                new Date(slot.startDateTime).toISOString() === new Date(startDateTime).toISOString() &&
+                new Date(slot.endDateTime).toISOString() === new Date(endDateTime).toISOString()
+            ) {
+                slotUpdated = true;
+                return { ...slot, isAvailable: false }; // Mark as booked
+            }
+            return slot;
+        });
+        
+        if (!slotUpdated) {
+            throw new Error('Slot not found or already booked.');
+        }
+        
+        await availability.save();
+        return { success: true, message: 'Slot marked as booked successfully.' };
+    } catch (error) {
+        console.error('Error updating availability:', error);
+        return { success: false, message: error.message };
+    }
+};
 
 
 module.exports = {

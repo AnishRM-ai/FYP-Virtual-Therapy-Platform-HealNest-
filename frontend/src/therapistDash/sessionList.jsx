@@ -40,7 +40,7 @@ export default function SessionsManagement() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const [selectedTab, setSelectedTab] = useState('Sessions');
-  const { therapist, sessions, fetchSessions, updateSessionNotes, markSessionComplete } = useTherapistStore();
+  const { therapist, sessions = [], fetchSessions, updateSessionNotes, markSessionComplete } = useTherapistStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -56,9 +56,10 @@ export default function SessionsManagement() {
 
   // Fetch sessions on component mount
   useEffect(() => {
-    setLoading(true);
-    fetchSessions()
-      .then(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        await fetchSessions();
         setLoading(false);
         // If sessionId is provided in URL, open the edit dialog for that session
         if (sessionId) {
@@ -69,12 +70,14 @@ export default function SessionsManagement() {
             setOpenEditDialog(true);
           }
         }
-      })
-      .catch(err => {
+      } catch (err) {
         setError(err.message);
         setLoading(false);
-      });
-  }, [sessionId, fetchSessions, sessions]);
+      }
+    };
+
+    fetchData();
+  }, [sessionId, fetchSessions]); // Removed `sessions` from dependencies
 
   // Handle editing session notes
   const handleEdit = (session) => {
@@ -122,15 +125,18 @@ export default function SessionsManagement() {
   // Handle marking session as complete
   const handleCompleteSession = (session) => {
     setSelectedSession(session);
+    navigate(`/sessionList/${session._id}`, { replace: true });
     setOpenCompleteDialog(true);
   };
 
   const confirmComplete = async () => {
     try {
+      console.log('Marking session complete with ID:', selectedSession._id);
       await markSessionComplete(selectedSession._id);
       setAlertMessage('Session marked as completed');
       setAlertSeverity('success');
       setAlertOpen(true);
+      navigate('/sessionList', { replace: true });
       setOpenCompleteDialog(false);
     } catch (err) {
       setAlertMessage('Failed to mark session as completed');
@@ -225,7 +231,7 @@ export default function SessionsManagement() {
                             </Typography>
                           )}
 
-{session.status === 'cancelled' && (
+                          {session.status === 'cancelled' && (
                             <Typography
                               component="span"
                               variant="body2"
@@ -244,26 +250,26 @@ export default function SessionsManagement() {
                           <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                             <AccessTimeOutlined sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                             <Typography variant="body2" color="text.secondary">
-                               {dayjs(session.scheduledTime).format('YYYY-MM-DD h:mm A')}
+                              {dayjs(session.scheduledTime).format('YYYY-MM-DD h:mm A')}
                             </Typography>
                           </Box>
                           {session.status === 'cancelled' && (
-      <>
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-          <Typography variant="body2" color="error" sx={{ fontWeight: 'medium' }}>
-            Cancelled by: {session.cancellation.cancelledBy === 'client' ? 'Client':'Therapist'}
-          </Typography>
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-            ({dayjs(session.cancellation.cancelledAt).format('MMM D, YYYY')})
-          </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            Reason: {session.cancellation.reason || 'No reason provided'}
-          </Typography>
-        </Box>
-      </>
-    )}
+                            <>
+                              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                <Typography variant="body2" color="error" sx={{ fontWeight: 'medium' }}>
+                                  Cancelled by: {session.cancellation.cancelledBy === 'client' ? 'Client' : 'Therapist'}
+                                </Typography>
+                              </Box>
+                              <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                                ({dayjs(session.cancellation.cancelledAt).format('MMM D, YYYY')})
+                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Reason: {session.cancellation.reason || 'No reason provided'}
+                                </Typography>
+                              </Box>
+                            </>
+                          )}
                           {session.notes?.therapistNotes && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                               <NoteOutlined sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
@@ -320,8 +326,7 @@ export default function SessionsManagement() {
                 {selectedSession.clientId.fullname} - {selectedSession.therapy}
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-               
-                 {dayjs(selectedSession.scheduledTime).format('YYYY-MM-DD h:mm A')}
+                {dayjs(selectedSession.scheduledTime).format('YYYY-MM-DD h:mm A')}
               </Typography>
               <TextField
                 label="Session Notes"
@@ -377,11 +382,11 @@ export default function SessionsManagement() {
         <DialogTitle>Mark Session as Completed</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to mark this session with {selectedSession?.patientName} as completed?
+            Are you sure you want to mark this session with {selectedSession?.clientId.fullname} as completed?
           </Typography>
           {selectedSession && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {formatSessionTime(selectedSession.date, selectedSession.time, selectedSession.duration)}
+              {dayjs(selectedSession.scheduledTime).format('YYYY-MM-DD h:mm A')}
             </Typography>
           )}
         </DialogContent>

@@ -1,233 +1,613 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Paper, Typography, TextField, Button, Alert, IconButton, Grid, Card, CardContent, CardActions, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox, Snackbar, Divider, Chip, Toolbar
+  Typography,
+  Paper,
+  Grid,
+  Avatar,
+  Button,
+  Stack,
+  Box,
+  Card,
+  CardContent,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  IconButton,
+  FormControlLabel,
+  Switch,
+  Snackbar,
+  Alert,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select
 } from '@mui/material';
 import {
-  HomeOutlined, CalendarMonthOutlined, PeopleOutlined, MessageOutlined, AccessTimeOutlined, Edit as EditIcon, Delete as DeleteIcon, Google as GoogleIcon, Save as SaveIcon, Add as AddIcon, Event as EventIcon, Close as CloseIcon
+  HomeOutlined,
+  CalendarMonthOutlined,
+  PeopleOutlined,
+  MessageOutlined,
+  AccessTimeOutlined,
+  CheckCircleOutlined,
+  StarOutlined,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
-import { format, parseISO } from 'date-fns';
-import Layout from './layout';
-import useTherapistStore from '../store/therapistStore.js';
-import dayjs from 'dayjs';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
+import useTherapistStore from '../store/therapistStore';
+import dayjs from "dayjs";
 
-const AvailabilityManagement = () => {
-  const { therapist, availability, fetchAuthenticatedAvailability, addUpdateAvailability, deleteAvailability, loading, error } = useTherapistStore();
-  const [selectedTab, setSelectedTab] = useState('Availability');
-  const [availabilitySlots, setAvailabilitySlots] = useState([]);
-  const [formData, setFormData] = useState({ slots: [{ startDateTime: '', endDateTime: '', isAvailable: true }] });
-  const [openDialog, setOpenDialog] = useState(false);
-  const [currentSlot, setCurrentSlot] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
+// Component for the availability section
+const AvailabilitySection = () => {
+  const {
+    availability,
+    loading,
+    error,
+    therapist,
+    fetchAuthenticatedAvailability,
+    addUpdateAvailability,
+    deleteAvailability
+  } = useTherapistStore();
+
+  // State for modals
+  const [openCreateModal, setOpenCreateModal] = useState(false);
+  const [openUpdateModal, setOpenUpdateModal] = useState(false);
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [isCalendarConnected, setIsCalendarConnected] = useState(false);
 
-  const sidebarItems = [
-    { text: 'Dashboard', icon: <HomeOutlined /> },
-    { text: 'Sessions', icon: <CalendarMonthOutlined /> },
-    { text: 'Patients', icon: <PeopleOutlined /> },
-    { text: 'Messages', icon: <MessageOutlined /> },
-    { text: 'Availability', icon: <AccessTimeOutlined /> },
-  ];
+  // Form state
+  const [formData, setFormData] = useState({
+    date: dayjs(),
+    startTime: dayjs().hour(9).minute(0),
+    endTime: dayjs().hour(10).minute(0),
+    isAvailable: true,
+    timezone: 'GMT'
+  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      await fetchAuthenticatedAvailability();
-      console.log('Fetched availability:', availability[therapist?.id]);
-      setAvailabilitySlots(availability[therapist?.id] || []);
-    };
+  // Extract the authenticated therapist's availability slots
+  const therapistAvailability = therapist && availability[therapist._id] ? availability[therapist._id] : null;
+  const slots = therapistAvailability && therapistAvailability.slots ? therapistAvailability.slots : [];
 
-    fetchData();
-  }, [fetchAuthenticatedAvailability, therapist?.id, availability]);
-
-  const handleGoogleCalendarConnect = () => {
-    setIsCalendarConnected(true);
-    setSnackbar({ open: true, message: 'Google Calendar connected successfully!', severity: 'success' });
+  // Function to handle opening the create modal
+  const handleOpenCreateModal = () => {
+    setFormData({
+      date: dayjs(),
+      startTime: dayjs().hour(9).minute(0),
+      endTime: dayjs().hour(10).minute(0),
+      isAvailable: true,
+      timezone: 'GMT'
+    });
+    setOpenCreateModal(true);
   };
 
-  const handleAvailabilityChange = (slotIndex, e) => {
-    const { name, value } = e.target;
-    const updatedSlots = [...formData.slots];
-    updatedSlots[slotIndex][name] = value;
-    setFormData((prevData) => ({ ...prevData, slots: updatedSlots }));
+  // Function to handle opening the update modal
+  const handleOpenUpdateModal = (slot) => {
+    setSelectedSlot(slot);
+    const slotDate = dayjs(slot.startDateTime);
+    setFormData({
+      date: slotDate,
+      startTime: slotDate,
+      endTime: dayjs(slot.endDateTime),
+      isAvailable: slot.isAvailable,
+      timezone: slot.timezone || 'GMT'
+    });
+    setOpenUpdateModal(true);
   };
 
-  const addNewSlot = () => {
-    setFormData((prevData) => ({
-      ...prevData,
-      slots: [...prevData.slots, { startDateTime: '', endDateTime: '', isAvailable: true }],
-    }));
+  // Function to handle opening the delete modal
+  const handleOpenDeleteModal = (slot) => {
+    setSelectedSlot(slot);
+    setOpenDeleteModal(true);
   };
 
-  const handleOpenCreateDialog = () => {
-    setFormData({ slots: [{ startDateTime: '', endDateTime: '', isAvailable: true }] });
-    setIsEditing(false);
-    setOpenDialog(true);
+  // Function to handle form input changes
+  const handleInputChange = (field, value) => {
+    setFormData({
+      ...formData,
+      [field]: value
+    });
   };
 
-  const handleOpenEditDialog = (slot, index) => {
-    setFormData({ slots: [{ ...slot }] });
-    setIsEditing(true);
-    setEditIndex(index);
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setCurrentSlot(null);
-    setIsEditing(false);
-    setEditIndex(null);
-  };
-
-  const handleSaveSlot = async () => {
-    const newSlot = formData.slots[0];
-    if (!newSlot.startDateTime || !newSlot.endDateTime) {
-      setSnackbar({ open: true, message: 'Please fill in all required fields', severity: 'error' });
-      return;
-    }
-
+  // Function to create a new availability slot
+  const handleCreateSlot = async () => {
     try {
-      if (isEditing && editIndex !== null) {
-        await addUpdateAvailability({ slots: [newSlot], timezone: 'UTC', isAvailable: newSlot.isAvailable });
-        setSnackbar({ open: true, message: 'Availability slot updated successfully!', severity: 'success' });
-      } else {
-        await addUpdateAvailability({ slots: [newSlot], timezone: 'UTC', isAvailable: newSlot.isAvailable });
-        setSnackbar({ open: true, message: 'New availability slot added successfully!', severity: 'success' });
-      }
-      // Re-fetch availability to ensure UI is in sync
-      await fetchAuthenticatedAvailability();
-      console.log('Updated availability:', availability[therapist?.id]);
-      setAvailabilitySlots(availability[therapist?.id] || []);
-      handleCloseDialog();
-    } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to save availability slot', severity: 'error' });
+      // Create the start and end date times
+      const startDateTime = formData.date
+        .hour(formData.startTime.hour())
+        .minute(formData.startTime.minute())
+        .second(0)
+        .millisecond(0);
+      
+      const endDateTime = formData.date
+        .hour(formData.endTime.hour())
+        .minute(formData.endTime.minute())
+        .second(0)
+        .millisecond(0);
+
+      // Prepare the data for the API call
+      const newSlot = {
+        slots: [
+          {
+            startDateTime: startDateTime.toISOString(),
+            endDateTime: endDateTime.toISOString(),
+            isAvailable: formData.isAvailable
+          }
+        ],
+        timezone: formData.timezone,
+        isAvailable: formData.isAvailable
+      };
+
+      // Call the API to create the slot
+      await addUpdateAvailability(newSlot);
+      
+      // Close the modal and show success message
+      setOpenCreateModal(false);
+      setSnackbar({
+        open: true,
+        message: 'Availability slot created successfully!',
+        severity: 'success'
+      });
+      
+      // Refresh the availability data
+      fetchAuthenticatedAvailability();
+    } catch (error) {
+      console.error('Error creating availability slot:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to create availability slot.',
+        severity: 'error'
+      });
     }
   };
 
-  const handleDeleteSlot = async (index) => {
-    const slotToDelete = availabilitySlots[index];
+  // Function to update an existing availability slot
+  const handleUpdateSlot = async () => {
     try {
-      await deleteAvailability(slotToDelete.startDateTime);
-      // Re-fetch availability to ensure UI is in sync
-      await fetchAuthenticatedAvailability();
-      console.log('Deleted availability:', availability[therapist?.id]);
-      setAvailabilitySlots(availability[therapist?.id] || []);
-      setSnackbar({ open: true, message: 'Availability slot deleted successfully!', severity: 'info' });
-    } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to delete availability slot', severity: 'error' });
+      // Create the start and end date times
+      const startDateTime = formData.date
+        .hour(formData.startTime.hour())
+        .minute(formData.startTime.minute())
+        .second(0)
+        .millisecond(0);
+      
+      const endDateTime = formData.date
+        .hour(formData.endTime.hour())
+        .minute(formData.endTime.minute())
+        .second(0)
+        .millisecond(0);
+
+      // Prepare the data for the API call
+      const updatedSlot = {
+        slots: [
+          {
+            startDateTime: startDateTime.toISOString(),
+            endDateTime: endDateTime.toISOString(),
+            isAvailable: formData.isAvailable
+          }
+        ],
+        timezone: formData.timezone,
+        isAvailable: formData.isAvailable
+      };
+
+      // Call the API to update the slot
+      await addUpdateAvailability(updatedSlot);
+      
+      // Close the modal and show success message
+      setOpenUpdateModal(false);
+      setSnackbar({
+        open: true,
+        message: 'Availability slot updated successfully!',
+        severity: 'success'
+      });
+      
+      // Refresh the availability data
+      fetchAuthenticatedAvailability();
+    } catch (error) {
+      console.error('Error updating availability slot:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to update availability slot.',
+        severity: 'error'
+      });
     }
   };
 
+  // Function to delete an availability slot
+  const handleDeleteSlot = async () => {
+    try {
+      // Call the API to delete the slot
+      await deleteAvailability(selectedSlot.startDateTime);
+      
+      // Close the modal and show success message
+      setOpenDeleteModal(false);
+      setSnackbar({
+        open: true,
+        message: 'Availability slot deleted successfully!',
+        severity: 'success'
+      });
+      
+      // Refresh the availability data
+      fetchAuthenticatedAvailability();
+    } catch (error) {
+      console.error('Error deleting availability slot:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete availability slot.',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Function to close snackbar
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const formatDate = (dateTimeString) => {
-    if (!dateTimeString) return '';
-    try {
-      return format(parseISO(dateTimeString), 'MMM d, yyyy h:mm a');
-    } catch (error) {
-      return dateTimeString;
-    }
-  };
-
-  const availabilityContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', my: 4 }}>
-      <Box sx={{ width: '100%', maxWidth: 'md', mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold">Availability Management</Typography>
-      </Box>
-
-      {!isCalendarConnected && (
-        <Paper elevation={0} sx={{ width: '100%', maxWidth: 'md', p: 4, textAlign: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 4 }}>
-          <CalendarMonthOutlined sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-          <Typography variant="h6" gutterBottom fontWeight="bold">Connect Your Calendar</Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            To manage your therapy sessions efficiently, please connect your Google Calendar. This will help you set your availability and schedule appointments.
-          </Typography>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            You need to connect your Google account to enable session scheduling and availability management.
-          </Alert>
-          <Button variant="contained" size="large" startIcon={<GoogleIcon />} onClick={handleGoogleCalendarConnect} sx={{ bgcolor: '#4285F4', color: 'white', '&:hover': { bgcolor: '#3367D6' }, px: 4, py: 1.5, mb: 3 }}>
-            Connect Google Calendar
-          </Button>
-        </Paper>
-      )}
-
-      <Paper elevation={0} sx={{ width: '100%', maxWidth: 'md', p: 4, border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 4 }}>
+  // Availability section content
+  return (
+    <Grid item xs={6}>
+      <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" fontWeight="bold">Manage Your Availability</Typography>
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenCreateDialog} disabled={!isCalendarConnected}>
-            Add Availability
+          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+            Available Time Slots
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<CalendarMonthOutlined />}
+            onClick={handleOpenCreateModal}
+            sx={{
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              }
+            }}
+          >
+            Add New Slot
           </Button>
         </Box>
 
-        {!loading && !error && availabilitySlots && availabilitySlots.length > 0 ? (
+        {loading && <CircularProgress />}
+        {error && <Typography color="error">{error}</Typography>}
+
+        {!loading && !error && slots && slots.length > 0 ? (
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-            {availabilitySlots.map((slot, index) => (
+            {slots.map((slot, index) => (
               <Card
                 key={index}
                 sx={{
                   minWidth: 120,
                   maxWidth: 150,
-                  p: 1,
-                  boxShadow: 1,
+                  boxShadow: 2,
                   border: "1px solid",
-                  borderColor: "grey.300",
-                  transition: "0.3s",
-                  "&:hover": { boxShadow: 3 },
+                  borderColor: "primary.light",
+                  borderRadius: 2,
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  cursor: "pointer",
+                  "&:hover": { 
+                    transform: "translateY(-3px)",
+                    boxShadow: 4,
+                    borderColor: "primary.main"
+                  },
+                  position: "relative"
                 }}
+                onClick={() => handleOpenUpdateModal(slot)}
               >
-                <CardContent sx={{ textAlign: "center", p: 1 }}>
-                  <Typography variant="body2" fontWeight="bold">
-                    {dayjs(slot.startDateTime).format("MMM D, YYYY")}
+                <CardContent sx={{ textAlign: "center", p: 1.5, "&:last-child": { pb: 1.5 } }}>
+                  <Box sx={{ 
+                    backgroundColor: "primary.light", 
+                    py: 0.5, 
+                    borderRadius: 1,
+                    mb: 1.5,
+                    color: "primary.dark"
+                  }}>
+                    <Typography variant="body2" fontWeight="bold">
+                      {dayjs(slot.startDateTime).format("MMM D, YYYY")}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", mb: 0.5 }}>
+                    <AccessTimeOutlined sx={{ fontSize: 16, mr: 0.5, color: "text.secondary" }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {dayjs(slot.startDateTime).format("HH:mm")} - {dayjs(slot.endDateTime).format("HH:mm")}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" sx={{ 
+                    display: "inline-block", 
+                    backgroundColor: slot.isAvailable ? "success.light" : "error.light", 
+                    color: slot.isAvailable ? "success.dark" : "error.dark",
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: 5,
+                    mt: 0.5
+                  }}>
+                    {slot.isAvailable ? "Available" : "Unavailable"}
                   </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {dayjs(slot.startDateTime).format("HH:mm")} -{" "}
-                    {dayjs(slot.endDateTime).format("HH:mm")}
-                  </Typography>
+                  <IconButton
+                    size="small"
+                    sx={{
+                      position: "absolute",
+                      top: 5,
+                      right: 5,
+                      backgroundColor: "rgba(255, 255, 255, 0.8)",
+                      "&:hover": {
+                        backgroundColor: "rgba(255, 255, 255, 0.9)",
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenDeleteModal(slot);
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" sx={{ color: "error.main" }} />
+                  </IconButton>
                 </CardContent>
-                <CardActions sx={{ justifyContent: 'flex-end', p: 1 }}>
-                  <IconButton size="small" color="primary" onClick={() => handleOpenEditDialog(slot, index)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" color="error" onClick={() => handleDeleteSlot(index)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </CardActions>
               </Card>
             ))}
+            <Card
+              sx={{
+                minWidth: 120,
+                maxWidth: 150,
+                height: "100%",
+                boxShadow: 1,
+                border: "1px dashed",
+                borderColor: "grey.400",
+                borderRadius: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                backgroundColor: "grey.50",
+                transition: "background-color 0.2s",
+                "&:hover": { 
+                  backgroundColor: "grey.100",
+                },
+              }}
+              onClick={handleOpenCreateModal}
+            >
+              <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 1.5 }}>
+                <Box sx={{ border: "1px solid", borderColor: "grey.400", borderRadius: "50%", p: 1, mb: 1 }}>
+                  <AddIcon sx={{ color: "grey.600" }} />
+                </Box>
+                <Typography variant="body2" color="text.secondary" align="center">
+                  Add new slot
+                </Typography>
+              </CardContent>
+            </Card>
           </Box>
         ) : (
-          !loading && !error && <Typography>No available slots found.</Typography>
-        )}
-      </Paper>
-
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{isEditing ? 'Edit Availability Slot' : 'Create New Availability Slot'}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <TextField name="startDateTime" label="Start Date & Time" type="datetime-local" value={formData.slots[0]?.startDateTime || ''} onChange={(e) => handleAvailabilityChange(0, e)} fullWidth margin="normal" InputLabelProps={{ shrink: true }} />
-            <TextField name="endDateTime" label="End Date & Time" type="datetime-local" value={formData.slots[0]?.endDateTime || ''} onChange={(e) => handleAvailabilityChange(0, e)} fullWidth margin="normal" InputLabelProps={{ shrink: true }} />
-            <FormControlLabel control={<Checkbox checked={formData.slots[0]?.isAvailable || false} onChange={(e) => handleAvailabilityChange(0, { target: { name: 'isAvailable', value: e.target.checked } })} />} label="Available" />
+          !loading && !error && 
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 4 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>No available slots found.</Typography>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />}
+              onClick={handleOpenCreateModal}
+              sx={{
+                bgcolor: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                }
+              }}
+            >
+              Create Your First Slot
+            </Button>
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="inherit">Cancel</Button>
-          <Button onClick={handleSaveSlot} color="primary" variant="contained" startIcon={<SaveIcon />}>{isEditing ? 'Update' : 'Save'}</Button>
-        </DialogActions>
-      </Dialog>
+        )}
 
-      <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={handleCloseSnackbar} message={snackbar.message} action={<IconButton size="small" color="inherit" onClick={handleCloseSnackbar}><CloseIcon fontSize="small" /></IconButton>} />
-    </Box>
-  );
+        {/* Create Slot Modal */}
+        <Dialog open={openCreateModal} onClose={() => setOpenCreateModal(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              Create New Availability Slot
+              <IconButton onClick={() => setOpenCreateModal(false)} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <Box sx={{ mt: 2 }}>
+                <DatePicker
+                  label="Date"
+                  value={formData.date}
+                  onChange={(newValue) => handleInputChange('date', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+                  sx={{ width: '100%', mb: 2 }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <TimePicker
+                  label="Start Time"
+                  value={formData.startTime}
+                  onChange={(newValue) => handleInputChange('startTime', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  sx={{ width: '50%' }}
+                />
+                <TimePicker
+                  label="End Time"
+                  value={formData.endTime}
+                  onChange={(newValue) => handleInputChange('endTime', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  sx={{ width: '50%' }}
+                />
+              </Box>
+            </LocalizationProvider>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Timezone</InputLabel>
+              <Select
+                value={formData.timezone}
+                label="Timezone"
+                onChange={(e) => handleInputChange('timezone', e.target.value)}
+              >
+                <MenuItem value="GMT">GMT</MenuItem>
+                <MenuItem value="EST">EST</MenuItem>
+                <MenuItem value="PST">PST</MenuItem>
+                <MenuItem value="CST">CST</MenuItem>
+                <MenuItem value="MST">MST</MenuItem>
+              </Select>
+            </FormControl>
+            <Box sx={{ mt: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.isAvailable}
+                    onChange={(e) => handleInputChange('isAvailable', e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="Available"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenCreateModal(false)} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={handleCreateSlot} variant="contained" color="primary">
+              Create
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-  const drawerWidth = 240;
+        {/* Update Slot Modal */}
+        <Dialog open={openUpdateModal} onClose={() => setOpenUpdateModal(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              Update Availability Slot
+              <IconButton onClick={() => setOpenUpdateModal(false)} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <Box sx={{ mt: 2 }}>
+                <DatePicker
+                  label="Date"
+                  value={formData.date}
+                  onChange={(newValue) => handleInputChange('date', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+                  sx={{ width: '100%', mb: 2 }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <TimePicker
+                  label="Start Time"
+                  value={formData.startTime}
+                  onChange={(newValue) => handleInputChange('startTime', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  sx={{ width: '50%' }}
+                />
+                <TimePicker
+                  label="End Time"
+                  value={formData.endTime}
+                  onChange={(newValue) => handleInputChange('endTime', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  sx={{ width: '50%' }}
+                />
+              </Box>
+            </LocalizationProvider>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Timezone</InputLabel>
+              <Select
+                value={formData.timezone}
+                label="Timezone"
+                onChange={(e) => handleInputChange('timezone', e.target.value)}
+              >
+                <MenuItem value="GMT">GMT</MenuItem>
+                <MenuItem value="EST">EST</MenuItem>
+                <MenuItem value="PST">PST</MenuItem>
+                <MenuItem value="CST">CST</MenuItem>
+                <MenuItem value="MST">MST</MenuItem>
+              </Select>
+            </FormControl>
+            <Box sx={{ mt: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.isAvailable}
+                    onChange={(e) => handleInputChange('isAvailable', e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="Available"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => handleOpenDeleteModal(selectedSlot)} 
+              color="error" 
+              startIcon={<DeleteIcon />}
+              sx={{ marginRight: 'auto' }}
+            >
+              Delete
+            </Button>
+            <Button onClick={() => setOpenUpdateModal(false)} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateSlot} variant="contained" color="primary">
+              Update
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-  return (
-    <Layout drawerWidth={drawerWidth} sidebarItems={sidebarItems} selectedTab={selectedTab} setSelectedTab={setSelectedTab} user={therapist}>
-      {availabilityContent}
-    </Layout>
+        {/* Delete Confirmation Modal */}
+        <Dialog open={openDeleteModal} onClose={() => setOpenDeleteModal(false)}>
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              Delete Availability Slot
+              <IconButton onClick={() => setOpenDeleteModal(false)} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete this availability slot?
+            </Typography>
+            {selectedSlot && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+                <Typography variant="body2">
+                  <strong>Date:</strong> {dayjs(selectedSlot.startDateTime).format("MMM D, YYYY")}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Time:</strong> {dayjs(selectedSlot.startDateTime).format("HH:mm")} - {dayjs(selectedSlot.endDateTime).format("HH:mm")}
+                </Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteModal(false)} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={handleDeleteSlot} variant="contained" color="error">
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Paper>
+    </Grid>
   );
 };
 
-export default AvailabilityManagement;
+export default AvailabilitySection;

@@ -24,13 +24,13 @@ import {
 import useTherapistStore from '../store/therapistStore';
 import dayjs from "dayjs";
 import Layout from '../therapistDash/layout';
+import AvailabilitySection from '../therapistDash/setAvailability'; // Import the new component
 
 const drawerWidth = 240;
 
 export default function HealNestDashboard() {
   const [selectedTab, setSelectedTab] = useState('Dashboard');
   const {
-    availability,
     loading,
     error,
     fetchTherapists,
@@ -38,7 +38,7 @@ export default function HealNestDashboard() {
     fetchAuthenticatedTherapist,
     therapist,
     fetchSessions,
-    sessions
+    sessions = [] // Provide a default empty array
   } = useTherapistStore();
 
   // Load therapists and the authenticated therapist
@@ -57,15 +57,11 @@ export default function HealNestDashboard() {
 
   // Sample statistics data (you can replace these with dynamic values)
   const stats = {
-    upcomingSessions: sessions.length,
+    upcomingSessions: 0,
     completedSessions: 124,
     totalPatients: 45,
     averageRating: 4.8
   };
-
-  // Extract the authenticated therapist’s availability slots
-  const therapistAvailability = therapist && availability[therapist._id] ? availability[therapist._id] : null;
-  const slots = therapistAvailability && therapistAvailability.slots ? therapistAvailability.slots : [];
 
   const dashboardContent = (
     <>
@@ -156,75 +152,41 @@ export default function HealNestDashboard() {
             </Box>
 
             <Stack spacing={3}>
-              {sessions.map(session => (
-                <Box key={session._id} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
-                    {session.clientId.fullname.charAt(0)}
-                  </Avatar>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="medium">
-                      {session.clientId.fullname} {session.status}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Therapy Session
-                    </Typography>
+              {sessions.length === 0 ? (
+                <Typography variant="body1" color="text.secondary">
+                  No sessions created yet.
+                </Typography>
+              ) : (
+                sessions.map(session => (
+                  <Box key={session._id} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
+                      {session.clientId.fullname.charAt(0)}
+                    </Avatar>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="subtitle1" fontWeight="medium">
+                        {session.clientId.fullname} {session.status}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Therapy Session
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="subtitle2" fontWeight="medium">
+                        {dayjs(session.scheduledTime).format('YYYY-MM-DD h:mm A')}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {session.duration} minutes
+                      </Typography>
+                    </Box>
                   </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle2" fontWeight="medium">
-                      {dayjs(session.scheduledTime).format('YYYY-MM-DD h:mm A')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {session.duration} minutes
-                    </Typography>
-                  </Box>
-                </Box>
-              ))}
+                ))
+              )}
             </Stack>
           </Paper>
         </Grid>
 
-        <Grid item xs={6}>
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-              Available Time Slots
-            </Typography>
-
-            {loading && <CircularProgress />}
-            {error && <Typography color="error">{error}</Typography>}
-
-            {!loading && !error && slots && slots.length > 0 ? (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-                {slots.map((slot, index) => (
-                  <Card
-                    key={index}
-                    sx={{
-                      minWidth: 120,
-                      maxWidth: 150,
-                      p: 1,
-                      boxShadow: 1,
-                      border: "1px solid",
-                      borderColor: "grey.300",
-                      transition: "0.3s",
-                      "&:hover": { boxShadow: 3 },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: "center", p: 1 }}>
-                      <Typography variant="body2" fontWeight="bold">
-                        {dayjs(slot.startDateTime).format("MMM D, YYYY")}
-                      </Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {dayjs(slot.startDateTime).format("HH:mm")} -{" "}
-                        {dayjs(slot.endDateTime).format("HH:mm")}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Box>
-            ) : (
-              !loading && !error && <Typography>No available slots found.</Typography>
-            )}
-          </Paper>
-        </Grid>
+        {/* Replace the old availability section with the new component */}
+        <AvailabilitySection />
       </Grid>
     </>
   );
