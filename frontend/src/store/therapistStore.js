@@ -173,6 +173,22 @@ const useTherapistStore = create((set) => ({
             set({ error: 'Failed to mark session as completed', loading: false });
             console.error('Error marking session complete:', err);
         }
+    },
+
+    updateAvailability: async (startDateTime, endDateTime) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await axios.post('/api/updateAvailability', {
+                startDateTime,
+                endDateTime
+            }, { withCredentials: true });
+            set({ loading: false });
+            return response.data;
+        } catch (error) {
+            set({ error: error.response?.data?.message || 'Failed to update availability', loading: false });
+            console.error('Error updating availability:', error);
+            return { success: false, message: error.response?.data?.message || 'Failed to update availability' };
+        }
     }
 }));
 

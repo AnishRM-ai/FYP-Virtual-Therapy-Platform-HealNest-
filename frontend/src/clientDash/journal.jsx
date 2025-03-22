@@ -33,6 +33,8 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import Layout from './layout';
+import useJournalStore from '../store/journalStore';
+import useClientSessionStore from '../store/clientStore';
 
 const drawerWidth = 240;
 
@@ -40,29 +42,37 @@ export default function JournalManagement() {
   const navigate = useNavigate();
   const { journalId } = useParams();
   const [selectedTab, setSelectedTab] = useState('Journal');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Journal states
-  const [journals, setJournals] = useState([]);
-  const [selectedJournal, setSelectedJournal] = useState(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [journalTitle, setJournalTitle] = useState('');
   const [journalContent, setJournalContent] = useState('');
-  const [isNewJournal, setIsNewJournal] = useState(false);
+  const [journalTags, setJournalTags] = useState([]);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState('success');
 
+  // Get data and methods from the journal store
+  const {
+    journals,
+    currentJournal,
+    isLoading,
+    error,
+    fetchJournals,
+    fetchJournalById,
+    createJournal,
+    updateJournal,
+    deleteJournal,
+    setCurrentJournal,
+    clearCurrentJournal,
+    clearError
+  } = useJournalStore();
+
   // Mock user data
-  const user = {
-    fullname: 'John Doe',
-    email: 'john@example.com',
-    role: 'client'
-  };
+  const {user} = useClientSessionStore();
 
   // Get random pastel color for journal cards
   const getRandomColor = (id) => {
@@ -78,139 +88,139 @@ export default function JournalManagement() {
 
   // Extract excerpt from content
   const getExcerpt = (content, maxLength = 150) => {
+    if (!content) return '';
     if (content.length <= maxLength) return content;
     return content.substr(0, maxLength) + '...';
   };
 
-  // Mock fetch journals
+  // Fetch journals on component mount
   useEffect(() => {
-    setLoading(true);
-    // Simulating API call
-    setTimeout(() => {
-      const mockJournals = [
-        {
-          _id: '1',
-          date: new Date('2025-03-15'),
-          title: 'Finding Peace',
-          content: 'Today I practiced mindfulness for 20 minutes. I noticed my thoughts were less chaotic than usual. The guided meditation helped me focus on my breathing and stay present. I felt a sense of calm that lasted throughout the morning. I want to continue this practice daily.',
-          tags: ['mindfulness', 'meditation']
-        },
-        {
-          _id: '2',
-          date: new Date('2025-03-10'),
-          title: 'Overcoming Anxiety',
-          content: 'I used the breathing techniques my therapist taught me when I felt anxious during the meeting. I counted four counts in, held for seven, and exhaled for eight. It was subtle enough that no one noticed, but effective enough that I could continue without my heart racing. Im proud of myself for implementing this strategy in a real-world situation.',
-          tags: ['anxiety', 'coping skills']
-        },
-        {
-          _id: '3',
-          date: new Date('2025-03-05'),
-          title: 'Gratitude Practice',
-          content: 'I am grateful for my family, my health, and the opportunity to grow. These small things bring me joy. When I focus on gratitude, my perspective shifts. Problems seem smaller and blessings seem greater. Today I spent five minutes writing down specific things I m thankful for, and it improved my mood significantly.',
-          tags: ['gratitude', 'positivity']
-        },
-        {
-          _id: '4',
-          date: new Date('2025-02-28'),
-          title: 'Creative Expression',
-          content: 'I spent an hour drawing today without any judgment or expectations. It felt liberating to create without pressure. The colors and shapes flowed naturally, and I lost track of time. This kind of creative expression seems to be therapeutic for me.',
-          tags: ['creativity', 'art therapy']
-        }
-      ];
-      setJournals(mockJournals);
-      setLoading(false);
+    fetchJournals().catch(err => {
+      console.error("Failed to fetch journals:", err);
+    });
+  }, [fetchJournals]);
 
-      // If journalId is provided in URL, open the edit dialog for that journal
-      if (journalId) {
-        const journal = mockJournals.find(j => j._id === journalId);
-        if (journal) {
-          setSelectedJournal(journal);
-          setJournalTitle(journal.title);
-          setJournalContent(journal.content);
-          setIsNewJournal(false);
-          setOpenEditDialog(true);
-        }
-      }
-    }, 1000);
-  }, [journalId]);
+  // Handle specific journal from URL
+  useEffect(() => {
+    if (journalId) {
+      fetchJournalById(journalId).then(journal => {
+        setJournalTitle(journal.title || '');
+        setJournalContent(journal.content || '');
+        setJournalTags(journal.tags || []);
+        setOpenEditDialog(true);
+      }).catch(err => {
+        console.error("Failed to fetch journal by ID:", err);
+      });
+    }
+  }, [journalId, fetchJournalById]);
 
   // Handle creating a new journal
   const handleCreateJournal = () => {
-    setIsNewJournal(true);
+    clearCurrentJournal();
     setJournalTitle('');
     setJournalContent('');
+    setJournalTags(['new entry']);
     setOpenCreateDialog(true);
   };
 
-  const handleSaveNewJournal = () => {
-    const newJournal = {
-      _id: `${journals.length + 1}`,
-      date: new Date(),
-      title: journalTitle,
-      content: journalContent,
-      tags: ['new entry']
-    };
-    setJournals([newJournal, ...journals]);
-    setAlertMessage('Your thoughts have been saved');
-    setAlertSeverity('success');
-    setAlertOpen(true);
-    setOpenCreateDialog(false);
+  const handleSaveNewJournal = async () => {
+    try {
+      await createJournal({
+        title: journalTitle,
+        content: journalContent,
+        tags: journalTags,
+        date: new Date()
+      });
+      
+      setAlertMessage('Your thoughts have been saved');
+      setAlertSeverity('success');
+      setAlertOpen(true);
+      setOpenCreateDialog(false);
+    } catch (err) {
+      setAlertMessage('Failed to save journal entry');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    }
   };
 
   // Handle editing journal
   const handleEdit = (journal) => {
-    setSelectedJournal(journal);
-    setJournalTitle(journal.title);
-    setJournalContent(journal.content);
-    setIsNewJournal(false);
+    setCurrentJournal(journal);
+    setJournalTitle(journal.title || '');
+    setJournalContent(journal.content || '');
+    setJournalTags(journal.tags || []);
     navigate(`/journal/${journal._id}`, { replace: true });
     setOpenEditDialog(true);
   };
 
   const handleCloseEdit = () => {
+    clearCurrentJournal();
     navigate('/journal', { replace: true });
     setOpenEditDialog(false);
   };
 
-  const handleSaveEdit = () => {
-    setJournals(prevJournals => 
-      prevJournals.map(journal => 
-        journal._id === selectedJournal._id 
-          ? { ...journal, title: journalTitle, content: journalContent } 
-          : journal
-      )
-    );
-    setAlertMessage('Journal updated successfully');
-    setAlertSeverity('success');
-    setAlertOpen(true);
-    navigate('/journal', { replace: true });
-    setOpenEditDialog(false);
+  const handleSaveEdit = async () => {
+    try {
+      if (!currentJournal || !currentJournal._id) {
+        throw new Error('No journal selected for edit');
+      }
+
+      await updateJournal(currentJournal._id, {
+        title: journalTitle,
+        content: journalContent,
+        tags: journalTags
+      });
+      
+      setAlertMessage('Journal updated successfully');
+      setAlertSeverity('success');
+      setAlertOpen(true);
+      navigate('/journal', { replace: true });
+      setOpenEditDialog(false);
+    } catch (err) {
+      setAlertMessage('Failed to update journal entry');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    }
   };
 
   // Handle deleting a journal
   const handleDelete = (journal) => {
-    setSelectedJournal(journal);
+    setCurrentJournal(journal);
     setOpenDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
-    setJournals(prevJournals => prevJournals.filter(journal => journal._id !== selectedJournal._id));
-    setAlertMessage('Entry removed from your journal');
-    setAlertSeverity('success');
-    setAlertOpen(true);
-    setOpenDeleteDialog(false);
+  const confirmDelete = async () => {
+    try {
+      if (!currentJournal || !currentJournal._id) {
+        throw new Error('No journal selected for deletion');
+      }
+
+      await deleteJournal(currentJournal._id);
+      
+      setAlertMessage('Entry removed from your journal');
+      setAlertSeverity('success');
+      setAlertOpen(true);
+      setOpenDeleteDialog(false);
+    } catch (err) {
+      setAlertMessage('Failed to delete journal entry');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    }
   };
 
   const handleCloseAlert = () => {
     setAlertOpen(false);
+    clearError();
   };
 
   // Filter journals based on search term
-  const filteredJournals = journals.filter(journal => 
-    journal.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    journal.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    journal.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredJournals = Array.isArray(journals) 
+  ? journals.filter(journal => 
+      journal.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      journal.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (journal.tags && journal.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
+    )
+  : [];
 
   return (
     <Layout
@@ -279,13 +289,25 @@ export default function JournalManagement() {
         />
       </Paper>
 
-      {loading ? (
+      {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
           <CircularProgress sx={{ color: '#6c68a3' }} />
         </Box>
       ) : error ? (
         <Box sx={{ p: 3 }}>
           <Typography color="error">{error}</Typography>
+          <Button 
+            variant="outlined" 
+            onClick={clearError}
+            sx={{ 
+              mt: 2,
+              borderRadius: 2,
+              color: '#6c68a3',
+              borderColor: '#6c68a3'
+            }}
+          >
+            Clear Error
+          </Button>
         </Box>
       ) : filteredJournals.length === 0 ? (
         <Paper
@@ -390,7 +412,7 @@ export default function JournalManagement() {
                         {getExcerpt(journal.content)}
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 'auto' }}>
-                        {journal.tags.map((tag, idx) => (
+                        {journal.tags && journal.tags.map((tag, idx) => (
                           <Chip 
                             key={idx} 
                             label={tag} 
@@ -593,7 +615,7 @@ export default function JournalManagement() {
         </DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete "{selectedJournal?.title}"? This action cannot be undone.
+            Are you sure you want to delete "{currentJournal?.title}"? This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>

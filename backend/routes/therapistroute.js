@@ -1,5 +1,5 @@
 const express = require('express');
-const {getAllTherapist, getTherapistById, getTherapistAvailability, addorupdateAvailability, getAuthenticatedTherapistAvailability, deleteAvailability} = require('../controllers/therapistList');
+const {getAllTherapist, getTherapistById, getTherapistAvailability, addorupdateAvailability, getAuthenticatedTherapistAvailability, deleteAvailability, updateAvailabilityAfterBooking} = require('../controllers/therapistList');
 const verifyToken = require('../middleware/verifyToken');
 const router = express.Router();
 
@@ -8,7 +8,7 @@ router.get('/therapist/availability', verifyToken, getAuthenticatedTherapistAvai
 router.put('/therapist/createAvailability', verifyToken, addorupdateAvailability );
 router.delete('/therapist/delete/slot', verifyToken, deleteAvailability);
 router.get('/therapist/:id', getTherapistById);
-
+router.post('/updateAvailability', verifyToken, updateAvailabilityAfterBooking)
 router.get('/therapist/:id/slots', getTherapistAvailability);
 
 

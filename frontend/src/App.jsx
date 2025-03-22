@@ -133,6 +133,7 @@ const App = () => {
         <Route path="/clientsessionList/:id" element={<PatientSessionsManagement/>} />
 
         <Route path="/journal" element={<JournalManagement/>} />
+        <Route path="/journal/:id" element={<JournalManagement/>} />
 
         <Route
           path="/select-role"
