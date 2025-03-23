@@ -111,7 +111,7 @@ const BookingSystem = () => {
       
       if (response.data.success) {
         // 2. If booking successful, update the availability to mark it as booked
-        const availabilityResponse = await updateAvailability(selectedTime, selectedEndTime);
+        const availabilityResponse = await updateAvailability(selectedTime);
         
         if (availabilityResponse && availabilityResponse.success === false) {
           toast.error('Session booked but failed to update availability. Please contact support.');

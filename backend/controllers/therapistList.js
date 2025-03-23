@@ -152,19 +152,18 @@ const deleteAvailability = async (req, res) => {
 };
 
 const updateAvailabilityAfterBooking = async (req, res) => {
-    const { startDateTime, endDateTime } = req.body;
+    const { startDateTime } = req.body;
     const therapistId = req.userId;
     
     try {
-        const availability = await Availability.findOne({ therapistId });
+        const availability = await OpenSlot.findOne({ therapistId });
         
         if (!availability) {
             return res.status(404).json({ success: false, message: 'Availability not found for this therapist.' });
         }
         
         const slotIndex = availability.slots.findIndex(slot =>
-            new Date(slot.startDateTime).toISOString() === new Date(startDateTime).toISOString() &&
-            new Date(slot.endDateTime).toISOString() === new Date(endDateTime).toISOString()
+            new Date(slot.startDateTime).toISOString() === new Date(startDateTime).toISOString()
         );
         
         if (slotIndex === -1 || !availability.slots[slotIndex].isAvailable) {
@@ -180,6 +179,7 @@ const updateAvailabilityAfterBooking = async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 };
+
 
 module.exports = {
     getAllTherapist,

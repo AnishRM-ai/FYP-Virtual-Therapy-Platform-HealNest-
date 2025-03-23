@@ -175,13 +175,12 @@ const useTherapistStore = create((set) => ({
         }
     },
 
-    updateAvailability: async (startDateTime, endDateTime) => {
+    updateAvailability: async (startDateTime) => {
         set({ loading: true, error: null });
         try {
-            const response = await axios.post('/api/updateAvailability', {
-                startDateTime,
-                endDateTime
-            }, { withCredentials: true });
+            const response = await axios.put(`http://localhost:5555/api/updateAvailability`, {
+                startDateTime
+            },);
             set({ loading: false });
             return response.data;
         } catch (error) {

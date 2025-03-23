@@ -27,10 +27,10 @@ const drawerWidth = 240;
 
 // Define the menu items globally
 export const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/client-dashboard' },
   { text: 'Sessions', icon: <EventIcon />, path: '/clientsessionList' },
   { text: 'Journal', icon: <JournalIcon />, path: '/journal' },
-  { text: 'Mood Tracker', icon: <MoodTrackerIcon />, path: '/mood-tracker' },
+  { text: 'Mood Tracker', icon: <MoodTrackerIcon />, path: '/moodtracker' },
   
 ];
 

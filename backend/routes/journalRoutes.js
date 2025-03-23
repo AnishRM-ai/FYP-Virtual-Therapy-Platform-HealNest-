@@ -25,4 +25,7 @@ router.put('/:journalId', updateJournal);
 // Delete a journal
 router.delete('/:journalId', deleteJournal);
 
+
+//Mood Tracker
+
 module.exports = router;

@@ -229,6 +229,7 @@ export default function JournalManagement() {
       setSelectedTab={setSelectedTab}
       user={user}
     >
+     <Box sx={{ mt: 8, p: 3 }}>
       <Box sx={{ mb: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, gap: 2 }}>
         <Box>
           <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5 }}>
@@ -665,6 +666,7 @@ export default function JournalManagement() {
           {alertMessage}
         </Alert>
       </Snackbar>
+      </Box>
     </Layout>
   );
 }

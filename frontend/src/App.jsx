@@ -21,6 +21,7 @@ import AvailabilityManagement from "./therapistDash/setAvailability.jsx";
 import SessionsManagement from "./therapistDash/sessionList.jsx";
 import PatientSessionsManagement from "./clientDash/upcomingSession";
 import JournalManagement from "./clientDash/journal.jsx";
+import MoodTracker from "./clientDash/moodtracker.jsx";
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
 
@@ -134,6 +135,8 @@ const App = () => {
 
         <Route path="/journal" element={<JournalManagement/>} />
         <Route path="/journal/:id" element={<JournalManagement/>} />
+
+        <Route path="/moodtracker" element={<MoodTracker/>} />
 
         <Route
           path="/select-role"
