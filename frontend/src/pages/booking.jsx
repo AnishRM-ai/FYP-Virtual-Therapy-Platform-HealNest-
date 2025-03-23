@@ -111,17 +111,22 @@ const BookingSystem = () => {
       
       if (response.data.success) {
         // 2. If booking successful, update the availability to mark it as booked
-        const availabilityResponse = await updateAvailability(selectedTime);
+        const availabilityResponse = await updateAvailability(selectedTime, id);
         
         if (availabilityResponse && availabilityResponse.success === false) {
           toast.error('Session booked but failed to update availability. Please contact support.');
+        } else {
+          // 3. Update local state to reflect the booked slot
+          setAvailableSlots(prevSlots => 
+            prevSlots.filter(slot => slot.startDateTime !== selectedTime)
+          );
         }
         
-        // 3. Set booking success state and store meeting link
+        // 4. Set booking success state and store meeting link
         setBookingSuccess(true);
         setMeetingLink(response.data.session.meetingLink);
         
-        // 4. Refresh availability after booking
+        // 5. Refresh availability after booking
         fetchAvailability(id);
       }
     } catch (error) {
@@ -218,7 +223,11 @@ const BookingSystem = () => {
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   value={selectedDate}
-                  onChange={(newValue) => setSelectedDate(newValue)}
+                  onChange={(newValue) => {
+                    setSelectedDate(newValue);
+                    setSelectedTime(''); // Reset selected time when date changes
+                    setSelectedEndTime('');
+                  }}
                   disablePast
                   sx={{ width: '100%', mb: 3 }}
                 />
@@ -233,6 +242,7 @@ const BookingSystem = () => {
                       variant={selectedTime === slot.startDateTime ? 'contained' : 'outlined'}
                       onClick={() => handleTimeSelection(slot.startDateTime, slot.endDateTime)}
                       sx={{ minWidth: 120, mr: 2, mb: 2 }}
+                      disabled={!slot.isAvailable}
                     >
                       {dayjs(slot.startDateTime).format('HH:mm')} - {dayjs(slot.endDateTime).format('HH:mm')}
                     </Button>

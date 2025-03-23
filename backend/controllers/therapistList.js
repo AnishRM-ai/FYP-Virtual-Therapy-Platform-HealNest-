@@ -152,26 +152,29 @@ const deleteAvailability = async (req, res) => {
 };
 
 const updateAvailabilityAfterBooking = async (req, res) => {
-    const { startDateTime } = req.body;
-    const therapistId = req.userId;
-    
+    const { startDateTime, therapistId } = req.body; // Accept therapistId explicitly
+
+    if (!therapistId) {
+        return res.status(400).json({ success: false, message: 'Therapist ID is required.' });
+    }
+
     try {
         const availability = await OpenSlot.findOne({ therapistId });
-        
+
         if (!availability) {
             return res.status(404).json({ success: false, message: 'Availability not found for this therapist.' });
         }
-        
+
         const slotIndex = availability.slots.findIndex(slot =>
             new Date(slot.startDateTime).toISOString() === new Date(startDateTime).toISOString()
         );
-        
+
         if (slotIndex === -1 || !availability.slots[slotIndex].isAvailable) {
             return res.status(400).json({ success: false, message: 'Slot not found or already booked.' });
         }
-        
+
         availability.slots[slotIndex].isAvailable = false; // Mark as booked
-        
+
         await availability.save();
         res.status(200).json({ success: true, message: 'Slot marked as booked successfully.', availability });
     } catch (error) {
