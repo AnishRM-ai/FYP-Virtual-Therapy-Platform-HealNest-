@@ -22,6 +22,8 @@ import SessionsManagement from "./therapistDash/sessionList.jsx";
 import PatientSessionsManagement from "./clientDash/upcomingSession";
 import JournalManagement from "./clientDash/journal.jsx";
 import MoodTracker from "./clientDash/moodtracker.jsx";
+import HealNestAdminDashboard from "./admindashboard/dashboard";
+import MindShareFeed from "./pages/feedPage.jsx";
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
 
@@ -137,6 +139,9 @@ const App = () => {
         <Route path="/journal/:id" element={<JournalManagement/>} />
 
         <Route path="/moodtracker" element={<MoodTracker/>} />
+
+        <Route path="/adminDash" element={<HealNestAdminDashboard/>} />
+        <Route path="/feed" element={<MindShareFeed/>}/>
 
         <Route
           path="/select-role"

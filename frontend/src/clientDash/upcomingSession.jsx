@@ -19,14 +19,18 @@ import {
   Divider,
   Snackbar,
   Avatar,
-  Alert
+  Alert,
+  Rating
 } from '@mui/material';
 import {
   CancelOutlined,
   AccessTimeOutlined,
   NoteOutlined,
   CloseOutlined,
-  EventNoteOutlined
+  EventNoteOutlined,
+  FeedbackOutlined,
+  StarOutline,
+  Star
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -39,7 +43,7 @@ export default function PatientSessionsManagement() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const [selectedTab, setSelectedTab] = useState('Sessions');
-  const { client, sessions = [], fetchSessions, fetchAuthenticatedClient, cancelSession } = useClientSessionStore();
+  const { client, sessions = [], fetchSessions, fetchAuthenticatedClient, cancelSession, submitFeedback } = useClientSessionStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -47,10 +51,15 @@ export default function PatientSessionsManagement() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [openCancelDialog, setOpenCancelDialog] = useState(false);
+  const [openFeedbackDialog, setOpenFeedbackDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState('success');
+  
+  // Feedback states
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -113,6 +122,43 @@ export default function PatientSessionsManagement() {
     }
   };
 
+  // Handle feedback
+  const handleOpenFeedback = (session) => {
+    setSelectedSession(session);
+    // Pre-fill with existing feedback if available
+    if (session.feedback) {
+      setFeedbackRating(session.feedback.rating);
+      setFeedbackComment(session.feedback.comment || '');
+    } else {
+      setFeedbackRating(0);
+      setFeedbackComment('');
+    }
+    setOpenFeedbackDialog(true);
+  };
+
+  const handleCloseFeedback = () => {
+    setOpenFeedbackDialog(false);
+  };
+
+  const submitSessionFeedback = async () => {
+    try {
+      await submitFeedback(selectedSession._id, {
+        rating: feedbackRating,
+        comment: feedbackComment
+      });
+      setAlertMessage('Feedback submitted successfully');
+      setAlertSeverity('success');
+      setAlertOpen(true);
+      setOpenFeedbackDialog(false);
+      // Refresh sessions to get updated feedback
+      await fetchSessions();
+    } catch (err) {
+      setAlertMessage('Failed to submit feedback');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    }
+  };
+
   const handleCloseAlert = () => {
     setAlertOpen(false);
   };
@@ -123,6 +169,11 @@ export default function PatientSessionsManagement() {
     const sessionTime = dayjs(session.scheduledTime);
     const now = dayjs();
     return sessionTime.diff(now, 'hour') > 24;
+  };
+
+  // Check if a session can receive feedback (only completed sessions)
+  const canProvideFeedback = (session) => {
+    return session.status === 'completed';
   };
 
   return (
@@ -252,6 +303,21 @@ export default function PatientSessionsManagement() {
                               </Typography>
                             </Box>
                           )}
+                          {session.feedback && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                              <Rating 
+                                size="small" 
+                                value={session.feedback.rating} 
+                                readOnly 
+                                sx={{ mr: 0.5 }}
+                                emptyIcon={<StarOutline style={{ fontSize: 16 }} />}
+                                icon={<Star style={{ fontSize: 16 }} />}
+                              />
+                              <Typography variant="body2" color="text.secondary">
+                                Your feedback
+                              </Typography>
+                            </Box>
+                          )}
                         </>
                       }
                     />
@@ -268,6 +334,20 @@ export default function PatientSessionsManagement() {
                           title="Cancel Session"
                         >
                           <CancelOutlined />
+                        </IconButton>
+                      )}
+                      {canProvideFeedback(session) && (
+                        <IconButton
+                          edge="end"
+                          aria-label="provide-feedback"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenFeedback(session);
+                          }}
+                          sx={{ color: session.feedback ? '#4caf50' : '#ff9800' }}
+                          title={session.feedback ? "Update Feedback" : "Provide Feedback"}
+                        >
+                          <FeedbackOutlined />
                         </IconButton>
                       )}
                     </ListItemSecondaryAction>
@@ -379,6 +459,51 @@ export default function PatientSessionsManagement() {
                   </Typography>
                 </>
               )}
+
+              {/* Feedback section in details view */}
+              {selectedSession.status === 'completed' && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle1" fontWeight="medium">
+                      Your Feedback
+                    </Typography>
+                    <Button 
+                      startIcon={<FeedbackOutlined />}
+                      variant="outlined" 
+                      size="small"
+                      onClick={() => {
+                        handleCloseView();
+                        handleOpenFeedback(selectedSession);
+                      }}
+                    >
+                      {selectedSession.feedback ? "Update Feedback" : "Add Feedback"}
+                    </Button>
+                  </Box>
+                  
+                  {selectedSession.feedback ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Rating 
+                        value={selectedSession.feedback.rating} 
+                        readOnly 
+                        sx={{ mb: 1 }}
+                      />
+                      <Typography variant="body2">
+                        {selectedSession.feedback.comment || "No written feedback provided."}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                        Submitted on: {dayjs(selectedSession.feedback.createdAt).format('MMMM D, YYYY')}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        You haven't provided feedback for this session yet.
+                      </Typography>
+                    </Box>
+                  )}
+                </>
+              )}
             </>
           )}
         </DialogContent>
@@ -450,6 +575,76 @@ export default function PatientSessionsManagement() {
             disableElevation
           >
             Cancel Session
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Feedback Dialog */}
+      <Dialog open={openFeedbackDialog} onClose={handleCloseFeedback} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {selectedSession?.feedback ? "Update Feedback" : "Session Feedback"}
+            <IconButton aria-label="close" onClick={handleCloseFeedback}>
+              <CloseOutlined />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedSession && (
+            <>
+              <Typography variant="subtitle1" gutterBottom>
+                Your session with Dr. {selectedSession.therapistId.fullname}
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {dayjs(selectedSession.scheduledTime).format('MMMM D, YYYY [at] h:mm A')}
+                {" • "}{selectedSession.therapy}
+              </Typography>
+
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  How would you rate your session?
+                </Typography>
+                <Rating
+                  value={feedbackRating}
+                  onChange={(event, newValue) => {
+                    setFeedbackRating(newValue);
+                  }}
+                  size="large"
+                  sx={{ mb: 2 }}
+                />
+
+                <TextField
+                  label="Share your experience (optional)"
+                  multiline
+                  rows={4}
+                  fullWidth
+                  margin="normal"
+                  variant="outlined"
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                  placeholder="What went well? What could have been better? Would you recommend this therapist to others?"
+                />
+
+                <Box sx={{ mt: 2, p: 2, bgcolor: '#e8f5e9', borderRadius: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Your feedback helps improve our services and assists other clients in finding the right therapist for their needs.
+                  </Typography>
+                </Box>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseFeedback}>Cancel</Button>
+          <Button
+            onClick={submitSessionFeedback}
+            variant="contained"
+            color="primary"
+            disableElevation
+            disabled={feedbackRating === 0}
+          >
+            Submit Feedback
           </Button>
         </DialogActions>
       </Dialog>
