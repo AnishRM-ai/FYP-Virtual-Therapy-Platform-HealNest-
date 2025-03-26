@@ -200,6 +200,53 @@ const updateTherapistNotes = async (req, res) => {
     }
 };
 
+//delete Sesssion.
+const deleteSession = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const therapistId = req.userId;
+
+        // Find the session by ID
+        const session = await Session.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        // Check if the therapist is authorized to delete the session
+        if (session.therapistId.toString() !== therapistId) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        // Get the OAuth2 client with token refresh handling
+        const oauth2Client = await getOAuth2Client(therapistId);
+
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+        // Check if the event exists before attempting to delete
+        if (session.calendarEventId) {
+            try {
+                await calendar.events.delete({
+                    calendarId: "primary",
+                    eventId: session.calendarEventId
+                });
+            } catch (calendarError) {
+                if (calendarError.code === 410) {
+                    console.warn("Calendar event already deleted:", calendarError.message);
+                } else {
+                    throw calendarError;
+                }
+            }
+        }
+
+        // Delete the session from the database
+        await Session.findByIdAndDelete(sessionId);
+
+        res.status(200).json({ success: true, message: "Session deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting session:", error);
+        res.status(500).json({ success: false, message: "Error deleting session", error: error.message });
+    }
+};
 const setSessionStatusToCompleted = async (req, res) => {
     const { sessionId } = req.params; // Retrieve sessionId from the URL params
     const therapistId = req.userId; // Assuming the therapist ID is stored in the request (e.g., from JWT token)
@@ -249,5 +296,5 @@ module.exports  = {createSession,
                     cancelSession,
                 updateTherapistNotes,
             setSessionStatusToCompleted,
-        getClientSessions};
+        getClientSessions, deleteSession};
 

@@ -13,6 +13,7 @@ const therapistRoutes = require('./routes/therapistroute');
 const sessionRoutes = require('./routes/sessionRoutes');
 const journalRoutes = require('./routes/journalRoutes');
 const moodRoutes = require('./routes/moodTrackerRoute');
+const feedbackRoutes = require('./routes/feedbackroute');
 
 const app = express();
 connectDB();
@@ -78,6 +79,7 @@ app.use('/api', therapistRoutes);
 app.use('/session', sessionRoutes);
 app.use('/journals', journalRoutes);
 app.use('/mood', moodRoutes);
+app.use('/feedback', feedbackRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on Port ${PORT}`);

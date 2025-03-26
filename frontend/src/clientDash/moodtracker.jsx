@@ -92,11 +92,11 @@ function MoodTracker() {
       label: 'Happy'
     },
     { 
-      value: 'Very Happy', 
+      value: 'Overjoyed', 
       icon: <SentimentVerySatisfiedIcon fontSize="large" />, 
       color: '#2196f3',
       gradient: 'linear-gradient(135deg, #2196f3 30%, #6ec6ff 90%)',
-      label: 'Very Happy'
+      label: 'Overjoyed'
     }
   ];
 

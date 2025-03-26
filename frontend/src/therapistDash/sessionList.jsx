@@ -40,7 +40,7 @@ export default function SessionsManagement() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const [selectedTab, setSelectedTab] = useState('Sessions');
-  const { therapist, sessions = [], fetchSessions, updateSessionNotes, markSessionComplete } = useTherapistStore();
+  const { therapist, sessions = [], fetchSessions, updateSessionNotes, markSessionComplete, deleteSession} = useTherapistStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -113,13 +113,27 @@ export default function SessionsManagement() {
     setOpenDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
-    // Remove the session from state (mock implementation)
-    setSessions(prevSessions => prevSessions.filter(session => session._id !== selectedSession._id));
-    setAlertMessage('Session deleted successfully');
-    setAlertSeverity('success');
+  const confirmDelete = async() => {
+    try{
+      const result = await deleteSession(selectedSession._id);
+      if (result.success) {
+        await fetchSessions();
+        setAlertMessage('Session deleted successfully');
+        setAlertSeverity('success');
+        setAlertOpen(true);
+    } else {
+        setAlertMessage('Failed to delete session');
+        setAlertSeverity('error');
+        setAlertOpen(true);
+    }
+} catch (error) {
+    console.error('Error deleting session:', error);
+    setAlertMessage('An error occurred while deleting the session');
+    setAlertSeverity('error');
     setAlertOpen(true);
+} finally {
     setOpenDeleteDialog(false);
+}
   };
 
   // Handle marking session as complete

@@ -188,6 +188,19 @@ const useTherapistStore = create((set) => ({
             console.error('Error updating availability:', error);
             return { success: false, message: error.response?.data?.message || 'Failed to update availability' };
         }
+    },
+
+    deleteSession: async(sessionId) =>{
+        set({loading: true, error:null});
+        try{
+            const response = await axios.delete(`http://localhost:5555/session/delete/${sessionId}`);
+            set({loading:false});
+            return response.data;
+        }catch(error){
+            set({error: error.response?.data?.message || 'Failed to delete session', loading: false});
+            console.error('Error deleting session:', error);
+            return{ success: false, message: error.response?.data?.message || 'Failed to delete session'};
+        }
     }
 }));
 

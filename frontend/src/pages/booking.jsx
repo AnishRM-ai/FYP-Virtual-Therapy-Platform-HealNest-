@@ -23,7 +23,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import NavBar from '../components/homenav';
 import { useAuthStore } from '../store/authStore';
-import useTherapistStore from '../store/therapistStore'; // Import the therapist store
+import useTherapistStore from '../store/therapistStore';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -38,19 +38,17 @@ const BookingSystem = () => {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [mode, setMode] = useState('light');
   const { user } = useAuthStore();
-  
-  // Use the therapist store instead of direct axios calls
-  const { 
-    therapist, 
-    availability, 
-    loading, 
-    fetchTherapistsById, 
+
+  const {
+    therapist,
+    availability,
+    loading,
+    fetchTherapistsById,
     fetchAvailability,
-    updateAvailability // Include the updateAvailability function
+    updateAvailability
   } = useTherapistStore();
 
   useEffect(() => {
-    // Use the store's methods to fetch therapist data and availability
     fetchTherapistsById(id);
     fetchAvailability(id);
   }, [id, fetchTherapistsById, fetchAvailability]);
@@ -58,26 +56,20 @@ const BookingSystem = () => {
   useEffect(() => {
     if (availability && availability[id]) {
       const selectedDateStr = selectedDate.format('YYYY-MM-DD');
-      
-      // Extract slots from the availability for the specific therapist
       let allSlots = [];
       if (Array.isArray(availability[id])) {
         availability[id].forEach(availabilityItem => {
           if (availabilityItem.slots && Array.isArray(availabilityItem.slots)) {
             allSlots = [...allSlots, ...availabilityItem.slots];
           } else if (availabilityItem.startDateTime) {
-            // Handle the case where availability might be a flat array of slots
             allSlots.push(availabilityItem);
           }
         });
       }
-      
-      // Filter slots for the selected date
       const slotsForSelectedDate = allSlots.filter(slot => {
         const slotDateStr = dayjs(slot.startDateTime).format('YYYY-MM-DD');
         return slotDateStr === selectedDateStr && slot.isAvailable;
       });
-
       setAvailableSlots(slotsForSelectedDate);
     }
   }, [selectedDate, availability, id]);
@@ -88,6 +80,11 @@ const BookingSystem = () => {
   };
 
   const handleBookSession = async () => {
+    if (!user) {
+      toast.error('You must be authenticated to book the slot.');
+      return;
+    }
+
     if (!selectedTime) {
       return;
     }
@@ -104,29 +101,20 @@ const BookingSystem = () => {
         status: 'pending',
       },
     };
-    
+
     try {
-      // 1. First, book the session
       const response = await axios.post(`http://localhost:5555/session/create`, bookingData);
-      
       if (response.data.success) {
-        // 2. If booking successful, update the availability to mark it as booked
         const availabilityResponse = await updateAvailability(selectedTime, id);
-        
         if (availabilityResponse && availabilityResponse.success === false) {
           toast.error('Session booked but failed to update availability. Please contact support.');
         } else {
-          // 3. Update local state to reflect the booked slot
-          setAvailableSlots(prevSlots => 
+          setAvailableSlots(prevSlots =>
             prevSlots.filter(slot => slot.startDateTime !== selectedTime)
           );
         }
-        
-        // 4. Set booking success state and store meeting link
         setBookingSuccess(true);
         setMeetingLink(response.data.session.meetingLink);
-        
-        // 5. Refresh availability after booking
         fetchAvailability(id);
       }
     } catch (error) {
@@ -165,8 +153,8 @@ const BookingSystem = () => {
           <Typography variant="body1" sx={{ mt: 2 }}>
             Meeting Link: <a href={meetingLink} target="_blank" rel="noopener noreferrer">{meetingLink}</a>
           </Typography>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             sx={{ mt: 3 }}
             onClick={() => window.location.href = '/signin'}
           >
@@ -181,7 +169,7 @@ const BookingSystem = () => {
     <Box sx={{ backgroundColor: mode === 'light' ? '#ffffff' : 'background.default', minHeight: '100vh' }}>
       <CssBaseline />
       <NavBar mode={mode} setMode={setMode} />
-   
+
       <Box sx={{ maxWidth: 1200, margin: 'auto', p: 3 }}>
         <Grid container spacing={4}>
           <Grid item xs={12} md={8}>
@@ -225,7 +213,7 @@ const BookingSystem = () => {
                   value={selectedDate}
                   onChange={(newValue) => {
                     setSelectedDate(newValue);
-                    setSelectedTime(''); // Reset selected time when date changes
+                    setSelectedTime('');
                     setSelectedEndTime('');
                   }}
                   disablePast
@@ -257,7 +245,7 @@ const BookingSystem = () => {
           <Grid item xs={12} md={4}>
             <Paper sx={{ p: 4, position: 'sticky', top: 20 }}>
               <Typography variant="h6" sx={{ mb: 3 }}>Booking Summary</Typography>
-              
+
               {selectedTime ? (
                 <>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
@@ -266,24 +254,24 @@ const BookingSystem = () => {
                       {dayjs(selectedTime).format('MMMM D, YYYY')}
                     </Typography>
                   </Box>
-                  
+
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="body1">Time:</Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {dayjs(selectedTime).format('h:mm A')} - {dayjs(selectedEndTime || selectedTime).add(selectedEndTime ? 0 : 50, 'minute').format('h:mm A')}
                     </Typography>
                   </Box>
-                  
+
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
                     <Typography variant="body1">Price:</Typography>
                     <Typography variant="body1" fontWeight="medium">
                       ${therapist.sessionPrice}
                     </Typography>
                   </Box>
-                  
-                  <Button 
-                    variant="contained" 
-                    fullWidth 
+
+                  <Button
+                    variant="contained"
+                    fullWidth
                     size="large"
                     onClick={handleBookSession}
                     disabled={booking || !selectedTime}

@@ -288,7 +288,6 @@ const HomePage = () => {
             <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
               <Button color="inherit" onClick={findTherapist}>Find Therapist</Button>
               <Button color="inherit">How It Works</Button>
-              <Button color="inherit">Resources</Button>
               <Button color="inherit">About Us</Button>
             </Box>
             
