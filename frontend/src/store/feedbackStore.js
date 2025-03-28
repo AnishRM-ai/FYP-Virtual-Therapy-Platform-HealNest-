@@ -13,7 +13,7 @@ const useFeedbackStore = create((set) => ({
     fetchTherapistFeedback: async (therapistId) => {
         set({ loading: true, error: null });
         try {
-            const response = await axios.get(`${API} /${therapistId}`, { withCredentials: true });
+            const response = await axios.get(`${API}/${therapistId}`);
             set({ feedbacks: response.data, loading: false });
         } catch (error) {
             set({ error: error.response?.data?.message || 'Failed to fetch feedback', loading: false });
@@ -24,7 +24,7 @@ const useFeedbackStore = create((set) => ({
     fetchSessionFeedback: async (sessionId) => {
         set({ loading: true, error: null });
         try {
-            const response = await axios.get(`${API}/${sessionId}`, { withCredentials: true });
+            const response = await axios.get(`${API}/${sessionId}`);
             set({ feedbacks: [response.data], loading: false });
         } catch (error) {
             set({ error: error.response?.data?.message || 'Failed to fetch feedback', loading: false });
@@ -35,12 +35,42 @@ const useFeedbackStore = create((set) => ({
     submitFeedback: async (feedbackData) => {
         set({ loading: true, error: null });
         try {
-            await axios.post(`${API}/create`, feedbackData, { withCredentials: true });
+            await axios.post(`http://localhost:5555/feedback/give`, feedbackData);
             set({ loading: false });
         } catch (error) {
             set({ error: error.response?.data?.message || 'Failed to submit feedback', loading: false });
         }
-    }
+    },
+
+    fetchCurrentTherapistFeedback: async () => {
+        set({ loading: true, error: null });
+        try {
+            const response = await axios.get('http://localhost:5555/feedback/myfeeback', {
+                withCredentials: true
+            });
+
+            set({ 
+                feedbacks: response.data.feedbacks, 
+                feedbackStats: response.data.stats,
+                loading: false 
+            });
+
+            return response.data;
+        } catch (error) {
+            set({ 
+                error: error.response?.data?.message || 'Failed to fetch therapist feedbacks',
+                feedbacks: [],
+                feedbackStats: {
+                    totalFeedbacks: 0,
+                    averageRating: 0
+                },
+                loading: false 
+            });
+            
+            throw error;
+        }
+    },
+
 }));
 
 export default useFeedbackStore;

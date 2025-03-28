@@ -1,4 +1,3 @@
-// File: src/components/TopBar.jsx
 import React, { useState } from 'react';
 import {
   Box,
@@ -17,7 +16,9 @@ import {
   NotificationsOutlined,
   Settings,
   Logout,
-  AccountCircle
+  AccountCircle,
+  PsychologyOutlined,
+  RestaurantOutlined
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +45,11 @@ const TopBar = ({ drawerWidth = 240 }) => {
     } catch (error) {
       console.error("Logout failed", error);
     }
+  };
+
+  const handleNavigate = (path) => {
+    navigate(path);
+    handleClose();
   };
 
   return (
@@ -119,6 +125,18 @@ const TopBar = ({ drawerWidth = 240 }) => {
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
+          <MenuItem onClick={() => handleNavigate('/therapist-search')} sx={{ py: 1 }}>
+            <ListItemIcon>
+              <PsychologyOutlined fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Find Therapist" />
+          </MenuItem>
+          <MenuItem onClick={() => handleNavigate('/feed')} sx={{ py: 1 }}>
+            <ListItemIcon>
+              <RestaurantOutlined fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Feed" />
+          </MenuItem>
           <MenuItem onClick={handleClose} sx={{ py: 1 }}>
             <ListItemIcon>
               <AccountCircle fontSize="small" />

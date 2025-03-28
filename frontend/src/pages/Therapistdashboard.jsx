@@ -9,7 +9,7 @@ import {
   Box,
   Card,
   CardContent,
-  CircularProgress
+  Rating
 } from '@mui/material';
 import {
   HomeOutlined,
@@ -18,13 +18,15 @@ import {
   MessageOutlined,
   AccessTimeOutlined,
   CheckCircleOutlined,
-  StarOutlined
+  StarOutlined,
+  FeedbackOutlined
 } from '@mui/icons-material';
 
 import useTherapistStore from '../store/therapistStore';
 import dayjs from "dayjs";
 import Layout from '../therapistDash/layout';
-import AvailabilitySection from '../therapistDash/setAvailability'; // Import the new component
+import AvailabilitySection from '../therapistDash/setAvailability';
+import useFeedbackStore from '../store/feedbackStore';
 
 const drawerWidth = 240;
 
@@ -38,8 +40,15 @@ export default function HealNestDashboard() {
     fetchAuthenticatedTherapist,
     therapist,
     fetchSessions,
-    sessions = [] // Provide a default empty array
+    sessions = [], 
   } = useTherapistStore();
+
+  const {
+    fetchCurrentTherapistFeedback, 
+    feedbacks = [], 
+    loading: feedbackLoading, 
+    error: feedbackError 
+  } = useFeedbackStore();
 
   // Load therapists and the authenticated therapist
   useEffect(() => {
@@ -47,22 +56,35 @@ export default function HealNestDashboard() {
     fetchAuthenticatedTherapist();
   }, [fetchTherapists, fetchAuthenticatedTherapist]);
 
-  // Once the authenticated therapist is loaded, fetch their availability and sessions
+  // Once the authenticated therapist is loaded, fetch their availability, sessions, and feedbacks
   useEffect(() => {
     if (therapist?._id) {
       fetchAuthenticatedAvailability();
       fetchSessions(therapist._id);
+      fetchCurrentTherapistFeedback(); // Fetch feedbacks for the therapist
     }
-  }, [therapist, fetchAuthenticatedAvailability, fetchSessions]);
+  }, [therapist, fetchAuthenticatedAvailability, fetchSessions, fetchCurrentTherapistFeedback]);
+
+  // Filter sessions to show only scheduled sessions
+  const scheduledSessions = sessions.filter(session => session.status === 'scheduled');
+
+  // Sort feedbacks by most recent
+  const recentFeedbacks = [...feedbacks]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 3); // Display only the 3 most recent feedbacks
 
   // Sample statistics data (you can replace these with dynamic values)
   const stats = {
-    upcomingSessions: 0,
+    upcomingSessions: scheduledSessions.length,
     completedSessions: 124,
     totalPatients: 45,
-    averageRating: 4.8
+    averageRating: feedbacks.length > 0 
+      ? (feedbacks.reduce((sum, feedback) => sum + feedback.rating, 0) / feedbacks.length).toFixed(1)
+      : 0
   };
 
+  // Rest of the component remains the same as in the original code...
+  
   const dashboardContent = (
     <>
       {/* Welcome Message */}
@@ -71,6 +93,8 @@ export default function HealNestDashboard() {
           Welcome, {therapist?.fullname || 'Guest'}!
         </Typography>
       </Box>
+      
+      {/* Statistics Grid */}
       <Grid container spacing={3} sx={{ mb: 1 }}>
         <Grid item xs={3}>
           <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
@@ -128,8 +152,10 @@ export default function HealNestDashboard() {
           </Paper>
         </Grid>
       </Grid>
+    
 
       <Grid container spacing={3}>
+        {/* Upcoming Sessions Column */}
         <Grid item xs={6}>
           <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -152,12 +178,12 @@ export default function HealNestDashboard() {
             </Box>
 
             <Stack spacing={3}>
-              {sessions.length === 0 ? (
+              {scheduledSessions.length === 0 ? (
                 <Typography variant="body1" color="text.secondary">
-                  No sessions created yet.
+                  No scheduled sessions.
                 </Typography>
               ) : (
-                sessions.map(session => (
+                scheduledSessions.map(session => (
                   <Box key={session._id} sx={{ display: 'flex', alignItems: 'center' }}>
                     <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
                       {session.clientId.fullname.charAt(0)}
@@ -185,7 +211,63 @@ export default function HealNestDashboard() {
           </Paper>
         </Grid>
 
-        {/* Replace the old availability section with the new component */}
+        {/* Recent Feedbacks Column */}
+        <Grid item xs={6}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" fontWeight="medium">
+                Recent Feedbacks
+              </Typography>
+              <FeedbackOutlined sx={{ color: 'text.secondary' }} />
+            </Box>
+
+            <Stack spacing={3}>
+              {recentFeedbacks.length === 0 ? (
+                <Typography variant="body1" color="text.secondary">
+                  No recent feedbacks.
+                </Typography>
+              ) : (
+                recentFeedbacks.map(feedback => (
+                  <Box 
+                    key={feedback._id} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      borderBottom: '1px solid', 
+                      borderColor: 'divider', 
+                      pb: 2 
+                    }}
+                  >
+                    <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
+                      {feedback.clientId.fullname.charAt(0)}
+                    </Avatar>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="medium">
+                          {feedback.clientId.fullname}
+                        </Typography>
+                        <Rating 
+                          value={feedback.rating} 
+                          precision={0.5} 
+                          size="small" 
+                          readOnly 
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        {feedback.comment}
+                      </Typography>
+                      <Typography variant="caption" color="text.disabled" sx={{ mt: 1 }}>
+                        {dayjs(feedback.createdAt).format('YYYY-MM-DD h:mm A')}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))
+              )}
+            </Stack>
+          </Paper>
+        </Grid>
+
+        {/* Availability Section */}
         <AvailabilitySection />
       </Grid>
     </>

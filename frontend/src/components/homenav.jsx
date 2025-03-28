@@ -4,9 +4,11 @@ import { Palette as PaletteIcon, LightMode as LightModeIcon, DarkMode as DarkMod
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
+
 const NavBar = ({ mode, setMode, isAuthenticated = false, user = null }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
+
   
   const themeMenuOpen = Boolean(anchorEl);
   const userMenuOpen = Boolean(userMenuAnchorEl);

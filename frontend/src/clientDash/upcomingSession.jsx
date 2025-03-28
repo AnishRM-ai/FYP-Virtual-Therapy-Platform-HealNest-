@@ -35,6 +35,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import useClientSessionStore from '../store/clientStore';
+import useFeedbackStore from '../store/feedbackStore';
 import Layout from './layout';
 
 const drawerWidth = 240;
@@ -43,7 +44,7 @@ export default function PatientSessionsManagement() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const [selectedTab, setSelectedTab] = useState('Sessions');
-  const { client, sessions = [], fetchSessions, fetchAuthenticatedClient, cancelSession, submitFeedback } = useClientSessionStore();
+  const { client, sessions = [], fetchSessions, fetchAuthenticatedClient, cancelSession } = useClientSessionStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -142,7 +143,8 @@ export default function PatientSessionsManagement() {
 
   const submitSessionFeedback = async () => {
     try {
-      await submitFeedback(selectedSession._id, {
+      await useFeedbackStore.getState().submitFeedback( {
+        sessionId: selectedSession._id,
         rating: feedbackRating,
         comment: feedbackComment
       });
