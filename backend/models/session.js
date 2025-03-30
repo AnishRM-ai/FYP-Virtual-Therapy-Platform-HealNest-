@@ -54,15 +54,6 @@ const sessionSchema = new mongoose.Schema({
         clientNotes: String, // visible to client
         therapistNotes: String, // private notes for therapist
     },
-    feedback: {
-        rating: {
-            type: Number,
-            min: 1,
-            max: 5
-        },
-        comment: String,
-        givenAt: Date 
-    },
     cancellation: {
         reason: String,
         cancelledBy: {

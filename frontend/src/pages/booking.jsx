@@ -23,7 +23,8 @@ import {
   VideoCall as VideoCallIcon,
   AccessTime as ClockIcon,
   CheckCircle as SuccessIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  Payment as PaymentIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
@@ -31,6 +32,8 @@ import axios from 'axios';
 import NavBar from '../components/homenav';
 import { useAuthStore } from '../store/authStore';
 import useTherapistStore from '../store/therapistStore';
+
+// Import Khalti Web SDK
 
 const MentalHealthBookingSystem = () => {
   const theme = useTheme();
@@ -55,6 +58,9 @@ const MentalHealthBookingSystem = () => {
   const [meetingLink, setMeetingLink] = useState('');
   const [booking, setBooking] = useState(false);
   const [mode, setMode] = useState('light');
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentToken, setPaymentToken] = useState('');
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
 
   // Filter states
   const [openFilterDialog, setOpenFilterDialog] = useState(false);
@@ -113,9 +119,12 @@ const MentalHealthBookingSystem = () => {
   const handleTimeSelection = (slot) => {
     setSelectedTime(slot.startDateTime);
     setSelectedEndTime(slot.endDateTime);
+    // Reset payment states when new time is selected
+    setShowPaymentOptions(false);
+    setPaymentSuccess(false);
   };
 
-  const handleBookSession = async () => {
+  const initiateBookingProcess = () => {
     if (!user) {
       toast.error('You must be authenticated to book the slot.');
       return;
@@ -125,7 +134,64 @@ const MentalHealthBookingSystem = () => {
       return;
     }
 
+    setShowPaymentOptions(true);
+  };
+
+  const handleKhaltiPayment = () => {
+    if (!therapist || !user) return;
+    
+    // Configure Khalti checkout
+    let config = {
+      "publicKey": "test_public_key_3befdb9fd1f34c95a6a183db8bd3ff4e",
+      "productIdentity": `session_${id}_${dayjs(selectedTime).format('YYYYMMDD_HHmm')}`,
+      "productName": `Therapy Session with ${therapist.fullname}`,
+      "productUrl": window.location.href,
+      "eventHandler": {
+        onSuccess(payload) {
+          // Hit your server with the payment token
+          verifyKhaltiPayment(payload);
+        },
+        onError(error) {
+          console.error("Khalti Payment Error:", error);
+          toast.error("Payment failed. Please try again.");
+        },
+        onClose() {
+          console.log("Khalti payment widget closed");
+        }
+      },
+      "amount": therapist.sessionPrice * 100 // Amount in paisa (Nepali currency)
+    };
+    console.log("Using Khalti public key:", config.publicKey);
+    // Initialize Khalti checkout
+    let checkout = new window.KhaltiCheckout(config);
+    checkout.show({ amount: config.amount });
+  };
+
+  const verifyKhaltiPayment = async (payload) => {
     setBooking(true);
+    try {
+      // Call your backend to verify the payment
+      const verificationResponse = await axios.post('http://localhost:5555/payment/verify-khalti', {
+        token: payload.token,
+        amount: therapist.sessionPrice * 100
+      });
+
+      if (verificationResponse.data.success) {
+        setPaymentToken(payload.token);
+        setPaymentSuccess(true);
+        // Now proceed with booking the session
+        completeBookingAfterPayment(payload.token);
+      } else {
+        toast.error('Payment verification failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      toast.error('Payment verification failed. Please try again.');
+      setBooking(false);
+    }
+  };
+
+  const completeBookingAfterPayment = async (token) => {
     const bookingData = {
       therapistId: id,
       clientId: user._id,
@@ -134,7 +200,9 @@ const MentalHealthBookingSystem = () => {
       payment: {
         amount: therapist.sessionPrice,
         currency: 'Npr',
-        status: 'pending',
+        status: 'completed',
+        method: 'khalti',
+        transactionId: token
       },
     };
 
@@ -158,7 +226,7 @@ const MentalHealthBookingSystem = () => {
       }
     } catch (error) {
       console.error('Error booking session:', error);
-      toast.error('Failed to book the session. Please try again.');
+      toast.error('Session booking failed after payment. Please contact support.');
     } finally {
       setBooking(false);
     }
@@ -242,9 +310,14 @@ const MentalHealthBookingSystem = () => {
             Your session with {therapist.fullname} is scheduled for{' '}
             {dayjs(selectedTime).format('MMMM D, YYYY [at] h:mm A')}.
           </Typography>
+          <Typography variant="body2" sx={{ mb: 3, color: '#7f8c8d' }}>
+            Payment completed via Khalti.
+            <br />
+            Transaction ID: {paymentToken.substring(0, 10)}...
+          </Typography>
           <Button
             variant="contained"
-            href={meetingLink}
+            href="/client-dashboard"
             target="_blank"
             sx={{
               backgroundColor: '#3498db',
@@ -252,7 +325,7 @@ const MentalHealthBookingSystem = () => {
               mb: 2
             }}
           >
-            Join Video Session
+            Go back to Dashboard
           </Button>
         </Paper>
       </Container>
@@ -404,7 +477,7 @@ const MentalHealthBookingSystem = () => {
                     </Typography>
                   </Box>
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <VideoCallIcon sx={{ mr: 1, color: '#3498db' }} />
                       <Typography>Session Type</Typography>
@@ -414,23 +487,54 @@ const MentalHealthBookingSystem = () => {
                     </Typography>
                   </Box>
 
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={handleBookSession}
-                    disabled={booking}
-                    sx={{
-                      backgroundColor: '#3498db',
-                      py: 1.5,
-                      '&:hover': { backgroundColor: '#2980b9' },
-                      '&.Mui-disabled': {
-                        backgroundColor: '#bdc3c7',
-                        color: 'white'
-                      }
-                    }}
-                  >
-                    {booking ? <CircularProgress size={24} /> : 'Confirm Booking'}
-                  </Button>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <PaymentIcon sx={{ mr: 1, color: '#3498db' }} />
+                      <Typography>Session Price</Typography>
+                    </Box>
+                    <Typography fontWeight="medium">
+                      NPR {therapist.sessionPrice || 0}
+                    </Typography>
+                  </Box>
+
+                  {!showPaymentOptions ? (
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      onClick={initiateBookingProcess}
+                      sx={{
+                        backgroundColor: '#3498db',
+                        py: 1.5,
+                        '&:hover': { backgroundColor: '#2980b9' }
+                      }}
+                    >
+                      Proceed to Payment
+                    </Button>
+                  ) : (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle1" sx={{ mb: 2, textAlign: 'center', fontWeight: 'medium' }}>
+                        Choose Payment Method
+                      </Typography>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleKhaltiPayment}
+                        disabled={booking}
+                        sx={{
+                          backgroundColor: '#5E338D', // Khalti's purple color
+                          color: 'white',
+                          py: 1.5,
+                          mb: 2,
+                          '&:hover': { backgroundColor: '#4a2a70' }
+                        }}
+                      >
+                        {booking ? <CircularProgress size={24} /> : 'Pay with Khalti'}
+                      </Button>
+                      <Typography variant="body2" sx={{ textAlign: 'center', color: '#7f8c8d' }}>
+                        By proceeding with the payment, you agree to our terms and policies.
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               ) : (
                 <Box sx={{

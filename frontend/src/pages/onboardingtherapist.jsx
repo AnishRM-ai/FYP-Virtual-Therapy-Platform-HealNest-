@@ -7,6 +7,7 @@ import GoogleIcon from '@mui/icons-material/Google';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import useOnboardingStore from '../store/onboardingStore.js';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const specializationOptions = ['Depression', 'Anxiety', 'Relationship', 'Trauma'];
 const languageOptions = ['English', 'Spanish', 'French', 'German', 'Nepali']; // Add more languages as needed
@@ -27,6 +28,7 @@ const TherapistOnboarding = () => {
   });
 
   const onboardTherapist = useOnboardingStore((state) => state.onboardTherapist);
+  const navigate = useNavigate();
 
   const handleNext = async () => {
     if (activeStep === steps.length - 1) {
@@ -44,6 +46,7 @@ const TherapistOnboarding = () => {
       if (result.success) {
         console.log('Form Data Submitted:', formDataToSend);
         toast.success('Onboarding Successful! Welcome to HealNest.');
+        navigate('/therapist-dashboard')
       } else {
         console.error('Onboarding failed:', result.message);
       }

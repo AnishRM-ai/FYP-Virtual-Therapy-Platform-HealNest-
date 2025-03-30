@@ -49,7 +49,7 @@ const therapistSchema = new mongoose.Schema(
         paymentDetails: {
             provider: {
                 type: String,
-                enum: ['Stripe', 'Paypal'],
+                enum: ['Khalti', 'Paypal'],
             },
             customerId: {
                 type: String,

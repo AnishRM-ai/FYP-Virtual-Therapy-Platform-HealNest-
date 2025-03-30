@@ -2,6 +2,7 @@ const Session = require('../models/session');
 const {google} = require('googleapis');
 const GoogleToken = require('../models/googleCalendar');
 const User = require('../models/User');
+const {verifyPayment} = require('../services/khaltiService');
 
 // Get OAuth2 client and stored credential
 const getOAuth2Client = async (userId) => {
@@ -39,63 +40,114 @@ const getOAuth2Client = async (userId) => {
 
 // create a new session and sync with google calendar.
 const createSession = async (req, res) => {
-    try{
-        const {therapistId, clientId, scheduledTime, duration, payment} = req.body;
+    try {
+        const { pidx, therapistId, clientId, scheduledTime, duration } = req.body;
+        
+        // First, verify the payment is completed
+        const payment = await verifyPayment(pidx);
+        if (payment.status !== 'completed') {
+            return res.status(400).json({
+                success: false,
+                message: 'Payment not completed',
+                error: 'Payment verification failed'
+            });
+        }
+
+        // Update payment record in database
+        await Payment.findOneAndUpdate(
+            { transactionId: pidx },
+            { 
+                status: 'paid',
+                providerResponse: payment
+            }
+        );
 
         const therapist = await User.findById(therapistId).select('fullname email');
         const client = await User.findById(clientId).select('fullname email');
 
-        if(!therapist || !client) {
-            return res.status(404).json({success: false, message:"Therapist or client not found."});
+        if (!therapist || !client) {
+            return res.status(404).json({ success: false, message: "Therapist or client not found." });
         }
 
-         // Get the OAuth2 client
-         const oauth2Client = await getOAuth2Client(therapistId);
+        // Get the OAuth2 client
+        const oauth2Client = await getOAuth2Client(therapistId);
 
-         // Initialize the Google Calendar API client
-         const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+        // Initialize the Google Calendar API client
+        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-        //google calendar event.
+        // Google calendar event
         const event = {
             summary: "Therapy Session",
             description: "A virtual therapy session.",
-            start: {dateTime: scheduledTime, timeZone: 'UTC'},
+            start: { dateTime: scheduledTime, timeZone: 'UTC' },
             end: { dateTime: new Date(new Date(scheduledTime).getTime() + duration * 60000).toISOString(), timeZone: 'UTC' },
-            attendees:[ 
-                {email: therapist.email, displayName: therapist.fullname},
-                {email: client.email, displayName: client.fullname}
+            attendees: [
+                { email: therapist.email, displayName: therapist.fullname },
+                { email: client.email, displayName: client.fullname }
             ],
-            conferenceData:{
-                createRequest: {requestId: `${Date.now()}`, conferenceSolutionKey: {type:'hangoutsMeet'},}
+            conferenceData: {
+                createRequest: { requestId: `${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } }
             },
-            reminders: {useDefault: true}
+            reminders: { useDefault: true }
         };
 
-    
-    const calendarEvent = await calendar.events.insert({
-        calendarId: 'primary',
-        resource: event,
-        conferenceDataVersion: 1 
-    });
+        const calendarEvent = await calendar.events.insert({
+            calendarId: 'primary',
+            resource: event,
+            conferenceDataVersion: 1
+        });
 
-    const meetingLink = calendarEvent.data.hangoutLink;
+        const meetingLink = calendarEvent.data.hangoutLink;
 
-    const newSession = new Session({
-        therapistId,
-        clientId,
-        scheduledTime,
-        duration,
-        status:'scheduled',
-        meetingLink,
-        payment,
-        calendarEventId: calendarEvent.data.id
-    });
+        const newSession = new Session({
+            therapistId,
+            clientId,
+            scheduledTime,
+            duration,
+            status: 'scheduled',
+            meetingLink,
+            payment: {
+                amount: payment.amount / 100, // Convert from paisa to currency units
+                status: 'completed',
+                transactionId: pidx
+            },
+            calendarEventId: calendarEvent.data.id
+        });
 
-    await newSession.save();
-    res.status(201).json({success: true, session: newSession});
-   } catch(err){
-    console.error("Error creating session: ", err);
-    res.status(500).json({success: false, message: 'Error creating session', err});
+        await newSession.save();
+        res.status(201).json({ success: true, session: newSession });
+    } catch (err) {
+        console.error("Error creating session: ", err);
+        const { pidx } = req.body;
+        
+        // If payment was already verified but session creation failed, attempt refund
+        if (pidx) {
+            try {
+                // Check if payment was completed
+                const paymentRecord = await Payment.findOne({ transactionId: pidx });
+                
+                if (paymentRecord && paymentRecord.status === 'paid') {
+                    // Attempt to refund the payment
+                    await refundPayment(
+                        pidx,
+                        paymentRecord.amount * 100, // Convert to paisa
+                        'Session creation failed'
+                    );
+                    
+                    // Update payment record
+                    paymentRecord.status = 'refunded';
+                    await paymentRecord.save();
+                }
+            } catch (refundError) {
+                console.error('Refund failed:', refundError);
+            }
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Error creating session',
+            error: err.message
+        });
     }
 };
 //Get therapist session
@@ -289,6 +341,26 @@ const getClientSessions = async (req, res) => {
     }catch (err){
         console.log("Error fetching therapist sessions:", err);
         res.status(500).json({success: false, message:"Internal server error"});    }
+};
+
+
+const getSessionDetails = async (req, res) => {
+    try {
+        const session = await Session.findById(req.params.sessionId)
+            .populate('therapistId clientId');
+        
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+        
+        res.json(session);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching session details' });
+    }
+};
+
+module.exports = {
+    getSessionDetails
 };
 
 module.exports  = {createSession,
