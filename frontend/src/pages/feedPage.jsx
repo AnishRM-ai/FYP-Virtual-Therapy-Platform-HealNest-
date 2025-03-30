@@ -16,12 +16,18 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   Menu,
   MenuItem,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  FormControl,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormLabel
 } from '@mui/material';
 import {
   FavoriteBorder,
@@ -31,11 +37,13 @@ import {
   Videocam,
   MoreVert,
   Close,
-  Send
+  Send,
+  Flag
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useForumStore from '../store/forumStore';
 import { useAuthStore } from '../store/authStore';
+import NavBar from '../components/homenav';
 
 const theme = createTheme({
   palette: {
@@ -116,6 +124,7 @@ const MindShareFeed = () => {
   } = useForumStore();
 
   const { user } = useAuthStore();
+  const [mode, setMode] = useState('light');
 
   const [newPostContent, setNewPostContent] = useState('');
   const [activeCommentId, setActiveCommentId] = useState(null);
@@ -130,9 +139,20 @@ const MindShareFeed = () => {
     message: '', 
     severity: 'success' 
   });
+  const [optimisticLikes, setOptimisticLikes] = useState({});
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('harmful');
+  const [reportDescription, setReportDescription] = useState('');
+  const [postToReport, setPostToReport] = useState(null);
+  const [reportMenuAnchorEl, setReportMenuAnchorEl] = useState(null);
 
-  // Normalize posts data when received
-  const normalizedPosts = posts.map(normalizePost);
+  const normalizedPosts = posts.map(post => {
+    const normalizedPost = normalizePost(post);
+    if (optimisticLikes[post._id]) {
+      normalizedPost.likes = optimisticLikes[post._id];
+    }
+    return normalizedPost;
+  });
 
   useEffect(() => {
     fetchPosts();
@@ -226,6 +246,7 @@ const MindShareFeed = () => {
         message: 'Comment added!',
         severity: 'success'
       });
+      await fetchPosts();
     } catch (err) {
       setNotification({
         open: true,
@@ -237,9 +258,34 @@ const MindShareFeed = () => {
 
   const handleLikePost = async (postId) => {
     try {
+      const post = normalizedPosts.find(p => p._id === postId);
+      if (!post) return;
+      
+      const userLiked = post.likes.includes(user?._id);
+      const updatedLikes = userLiked
+        ? post.likes.filter(id => id !== user?._id)
+        : [...post.likes, user?._id];
+        
+      setOptimisticLikes(prev => ({
+        ...prev,
+        [postId]: updatedLikes
+      }));
+      
       await likePost(postId);
+      await fetchPosts();
+      
+      setOptimisticLikes(prev => {
+        const newState = {...prev};
+        delete newState[postId];
+        return newState;
+      });
     } catch (err) {
       console.log(err);
+      setOptimisticLikes(prev => {
+        const newState = {...prev};
+        delete newState[postId];
+        return newState;
+      });
       setNotification({
         open: true,
         message: 'Failed to like post.',
@@ -272,6 +318,49 @@ const MindShareFeed = () => {
     setNotification(prev => ({ ...prev, open: false }));
   };
 
+  const isPostLikedByUser = (post) => {
+    return post.likes.includes(user?._id);
+  };
+
+  const handleReportMenuOpen = (event, post) => {
+    setReportMenuAnchorEl(event.currentTarget);
+    setPostToReport(post);
+  };
+
+  const handleReportMenuClose = () => {
+    setReportMenuAnchorEl(null);
+  };
+
+  const handleReportDialogOpen = () => {
+    setReportDialogOpen(true);
+    handleReportMenuClose();
+  };
+
+  const handleReportDialogClose = () => {
+    setReportDialogOpen(false);
+    setReportReason('harmful');
+    setReportDescription('');
+    setPostToReport(null);
+  };
+
+  const handleSubmitReport = async () => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      handleReportDialogClose();
+      setNotification({
+        open: true,
+        message: 'Report submitted successfully. Our team will review it.',
+        severity: 'success'
+      });
+    } catch (err) {
+      setNotification({
+        open: true,
+        message: 'Failed to submit report.',
+        severity: 'error'
+      });
+    }
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{
@@ -279,35 +368,8 @@ const MindShareFeed = () => {
         minHeight: '100vh',
         pb: 4
       }}>
-        {/* App Bar */}
-        <Box sx={{
-          py: 1,
-          px: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: 1,
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}>M</Avatar>
-            <Typography variant="h6" sx={{ ml: 1, fontWeight: 'bold' }}>
-              MindShare
-            </Typography>
-          </Box>
-          <Box>
-            <IconButton size="small">
-              <Avatar
-                src={user?.avatar || ''}
-                sx={{ width: 32, height: 32 }}
-              />
-            </IconButton>
-          </Box>
-        </Box>
+        {/* Use the NavBar component */}
+        <NavBar mode={mode} setMode={setMode} />
 
         {/* Main Content */}
         <Box sx={{
@@ -379,14 +441,25 @@ const MindShareFeed = () => {
                     <Avatar src={post.user?.avatar || ''} />
                   }
                   action={
-                    post.user?._id === user?._id && (
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, post)}
-                      >
-                        <MoreVert />
-                      </IconButton>
-                    )
+                    <Box sx={{ display: 'flex' }}>
+                      {post.user?._id !== user?._id && (
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleReportMenuOpen(e, post)}
+                          sx={{ mr: 1 }}
+                        >
+                          <Flag fontSize="small" />
+                        </IconButton>
+                      )}
+                      {post.user?._id === user?._id && (
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, post)}
+                        >
+                          <MoreVert />
+                        </IconButton>
+                      )}
+                    </Box>
                   }
                   title={
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
@@ -406,7 +479,6 @@ const MindShareFeed = () => {
                   </Typography>
                 </CardContent>
 
-                {/* Interaction Stats */}
                 <Box sx={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -415,7 +487,7 @@ const MindShareFeed = () => {
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Typography variant="body2" color="text.secondary">
-                      {post.likes.length}
+                      {post.likedBy.length} likes
                     </Typography>
                   </Box>
                   <Typography variant="body2" color="text.secondary">
@@ -425,17 +497,16 @@ const MindShareFeed = () => {
 
                 <Divider />
 
-                {/* Action Buttons */}
                 <Box sx={{
                   display: 'flex',
                   justifyContent: 'space-around',
                   py: 1
                 }}>
                   <Button
-                    startIcon={post.likes.includes(user?._id) ? <Favorite color="error" /> : <FavoriteBorder />}
+                    startIcon={isPostLikedByUser(post) ? <Favorite color="error" /> : <FavoriteBorder />}
                     onClick={() => handleLikePost(post._id)}
                     sx={{ 
-                      color: post.likes.includes(user?._id) ? 'error.main' : 'text.secondary' 
+                      color: isPostLikedByUser(post) ? 'error.main' : 'text.secondary' 
                     }}
                   >
                     Like
@@ -449,10 +520,8 @@ const MindShareFeed = () => {
                   </Button>
                 </Box>
 
-                {/* Comments Section */}
                 {(post.comments.length > 0 || activeCommentId === post._id) && (
                   <Box sx={{ bgcolor: 'grey.50', py: 1, px: 2 }}>
-                    {/* Existing Comments */}
                     {post.comments.length > 0 && (
                       <List disablePadding>
                         {post.comments.map(comment => (
@@ -493,7 +562,6 @@ const MindShareFeed = () => {
                       </List>
                     )}
 
-                    {/* Add Comment */}
                     {activeCommentId === post._id && (
                       <Box sx={{
                         display: 'flex',
@@ -540,7 +608,6 @@ const MindShareFeed = () => {
           )}
         </Box>
 
-        {/* Post Edit Dialog */}
         <Dialog
           open={editDialogOpen}
           onClose={() => setEditDialogOpen(false)}
@@ -583,7 +650,6 @@ const MindShareFeed = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
         <Dialog
           open={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
@@ -609,7 +675,67 @@ const MindShareFeed = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Post Menu */}
+        <Dialog
+          open={reportDialogOpen}
+          onClose={handleReportDialogClose}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>
+            Report Post
+            <IconButton
+              size="small"
+              onClick={handleReportDialogClose}
+              sx={{ position: 'absolute', right: 8, top: 8 }}
+            >
+              <Close fontSize="small" />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              Please tell us why you're reporting this post. Your report will be confidential.
+            </DialogContentText>
+            
+            <FormControl component="fieldset" sx={{ mb: 2 }}>
+              <FormLabel component="legend">Reason for report:</FormLabel>
+              <RadioGroup
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+              >
+                <FormControlLabel value="harmful" control={<Radio />} label="Harmful or dangerous content" />
+                <FormControlLabel value="harassment" control={<Radio />} label="Harassment or bullying" />
+                <FormControlLabel value="hateSpeech" control={<Radio />} label="Hate speech" />
+                <FormControlLabel value="falseInfo" control={<Radio />} label="False information" />
+                <FormControlLabel value="spam" control={<Radio />} label="Spam or misleading" />
+                <FormControlLabel value="other" control={<Radio />} label="Other" />
+              </RadioGroup>
+            </FormControl>
+            
+            <TextField
+              fullWidth
+              label="Additional details (optional)"
+              multiline
+              rows={3}
+              value={reportDescription}
+              onChange={(e) => setReportDescription(e.target.value)}
+              placeholder="Please provide any additional information that might help us understand the issue."
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleReportDialogClose}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmitReport}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Submit Report'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
@@ -619,7 +745,19 @@ const MindShareFeed = () => {
           <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>Delete post</MenuItem>
         </Menu>
 
-        {/* Notifications */}
+        <Menu
+          anchorEl={reportMenuAnchorEl}
+          open={Boolean(reportMenuAnchorEl)}
+          onClose={handleReportMenuClose}
+        >
+          <MenuItem onClick={handleReportDialogOpen}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Flag fontSize="small" sx={{ mr: 1, color: 'warning.main' }} />
+              Report post
+            </Box>
+          </MenuItem>
+        </Menu>
+
         <Snackbar
           open={notification.open}
           autoHideDuration={4000}

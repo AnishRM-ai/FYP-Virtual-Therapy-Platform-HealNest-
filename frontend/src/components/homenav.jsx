@@ -3,15 +3,18 @@ import { AppBar, Toolbar, Typography, Button, Box, IconButton, Menu, MenuItem, A
 import { Palette as PaletteIcon, LightMode as LightModeIcon, DarkMode as DarkModeIcon, AccountCircle, ArrowDropDown } from '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 
 
-const NavBar = ({ mode, setMode, isAuthenticated = false, user = null }) => {
+const NavBar = ({ mode, setMode}) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
 
   
   const themeMenuOpen = Boolean(anchorEl);
   const userMenuOpen = Boolean(userMenuAnchorEl);
+
+  const {user, isAuthenticated, logout} = useAuthStore();
 
   const handleThemeMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -102,19 +105,23 @@ const NavBar = ({ mode, setMode, isAuthenticated = false, user = null }) => {
   };
 
   const goToDashboard = () => {
-    navigate('/dashboard');
+    navigate('/signin');
     handleUserMenuClose();
   };
 
-  const handleLogout = () => {
-    // Implement logout functionality here
-    // This would typically involve clearing auth tokens and redirecting
+  const handleLogout = async() => {
+    await logout();
     handleUserMenuClose();
     navigate('/home');
   };
 
   const handleProfile = () => {
     navigate('/profile');
+    handleUserMenuClose();
+  };
+
+  const goToForum = () => {
+    navigate('/feed');
     handleUserMenuClose();
   };
 
@@ -162,6 +169,13 @@ const NavBar = ({ mode, setMode, isAuthenticated = false, user = null }) => {
 
           {isAuthenticated && user ? (
             <>
+            <Button 
+                color="inherit" 
+                onClick={goToForum}
+                sx={{ ml: 2 }}
+              >
+              Forum
+              </Button>
               <Button 
                 color="inherit" 
                 onClick={goToDashboard}

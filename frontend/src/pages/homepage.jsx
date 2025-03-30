@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import homanImg from '../assets/homan.png';
+import NavBar from '../components/homenav';
 
 // Animation hook for scroll effects
 const useScrollAnimation = (threshold = 0.1) => {
@@ -275,59 +276,8 @@ const HomePage = () => {
       <CssBaseline />
       <div>
         {/* Header */}
-        <AppBar position="sticky" color="default" elevation={1}>
-          <Toolbar>
-            <Typography
-              variant="h6"
-              color="primary"
-              component="div"
-              sx={{ flexGrow: 1 }}
-            >
-              HealNest
-            </Typography>
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
-              <Button color="inherit" onClick={findTherapist}>Find Therapist</Button>
-              <Button color="inherit">How It Works</Button>
-              <Button color="inherit">About Us</Button>
-            </Box>
-            
-            {/* Theme Toggle Button */}
-            <IconButton 
-              onClick={handleThemeMenuClick} 
-              color="primary"
-              aria-controls={open ? 'theme-menu' : undefined}
-              aria-haspopup="true"
-              aria-expanded={open ? 'true' : undefined}
-            >
-              <PaletteIcon />
-            </IconButton>
-            
-            {/* Theme selection menu */}
-            <Menu
-              id="theme-menu"
-              anchorEl={anchorEl}
-              open={open}
-              onClose={handleMenuClose}
-              MenuListProps={{
-                'aria-labelledby': 'theme-button',
-              }}
-            >
-              <MenuItem onClick={() => handleThemeChange('light')}>
-                <LightModeIcon sx={{ mr: 1 }} />
-                Light Mode
-              </MenuItem>
-              <MenuItem onClick={() => handleThemeChange('dark')}>
-                <DarkModeIcon sx={{ mr: 1 }} />
-                Dark Mode
-              </MenuItem>
-            </Menu>
-            
-            <Button color="primary" sx={{ ml: 2 }} onClick={goToSignIn}>Sign In</Button>
-            <Button variant="contained" color="primary" sx={{ ml: 2 }} onClick={goToRoleSelection}>
-              Get Started
-            </Button>
-          </Toolbar>
-        </AppBar>
+       <NavBar mode={mode} setMode={setMode}>
+          </NavBar>
 
         {/* Hero Section */}
         <Container maxWidth="lg" sx={{ mt: 8, mb: 8 }}>

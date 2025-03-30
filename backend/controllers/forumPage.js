@@ -169,7 +169,7 @@ exports.likePost = async (req, res) => {
       return res.status(404).json({ msg: 'Post not found' });
     }
 
-    const userId = req.user.id;
+    const userId = req.userId;
 
     if (post.likedBy.includes(userId)) {
       // Unlike the post

@@ -15,7 +15,8 @@ const journalRoutes = require('./routes/journalRoutes');
 const moodRoutes = require('./routes/moodTrackerRoute');
 const feedbackRoutes = require('./routes/feedbackroute');
 const PaymentRoutes = require('./routes/paymentRoutes');
-const ForumRoutes = require('./routes/forumRoutes')
+const ForumRoutes = require('./routes/forumRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 connectDB();
@@ -84,6 +85,7 @@ app.use('/mood', moodRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/payment', PaymentRoutes);
 app.use('/forum', ForumRoutes);
+app.use('/report', reportRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on Port ${PORT}`);

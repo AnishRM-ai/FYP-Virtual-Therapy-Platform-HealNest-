@@ -10,7 +10,8 @@ import {
   ListItemIcon,
   ListItemText,
   AppBar,
-  Toolbar
+  Toolbar,
+  Button
 } from '@mui/material';
 import {
   NotificationsOutlined,
@@ -49,7 +50,6 @@ const TopBar = ({ drawerWidth = 240 }) => {
 
   const handleNavigate = (path) => {
     navigate(path);
-    handleClose();
   };
 
   return (
@@ -64,6 +64,20 @@ const TopBar = ({ drawerWidth = 240 }) => {
       }}
     >
       <Toolbar sx={{ justifyContent: 'flex-end' }}>
+        <Button 
+          startIcon={<PsychologyOutlined />}
+          onClick={() => handleNavigate('/therapist-search')}
+          sx={{ color: 'inherit', mr: 1 }}
+        >
+          Find Therapist
+        </Button>
+        <Button 
+          startIcon={<RestaurantOutlined />}
+          onClick={() => handleNavigate('/feed')}
+          sx={{ color: 'inherit', mr: 1 }}
+        >
+          Feed
+        </Button>
         <IconButton size="large" color="inherit">
           <NotificationsOutlined />
         </IconButton>
@@ -125,25 +139,13 @@ const TopBar = ({ drawerWidth = 240 }) => {
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          <MenuItem onClick={() => handleNavigate('/therapist-search')} sx={{ py: 1 }}>
-            <ListItemIcon>
-              <PsychologyOutlined fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primary="Find Therapist" />
-          </MenuItem>
-          <MenuItem onClick={() => handleNavigate('/feed')} sx={{ py: 1 }}>
-            <ListItemIcon>
-              <RestaurantOutlined fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primary="Feed" />
-          </MenuItem>
-          <MenuItem onClick={handleClose} sx={{ py: 1 }}>
+          <MenuItem onClick={() => handleNavigate('/profile')} sx={{ py: 1 }}>
             <ListItemIcon>
               <AccountCircle fontSize="small" />
             </ListItemIcon>
             <ListItemText primary="My Profile" />
           </MenuItem>
-          <MenuItem onClick={handleClose} sx={{ py: 1 }}>
+          <MenuItem onClick={() => handleNavigate('/settings')} sx={{ py: 1 }}>
             <ListItemIcon>
               <Settings fontSize="small" />
             </ListItemIcon>

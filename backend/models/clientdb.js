@@ -39,22 +39,6 @@ const clientSchema = new mongoose.Schema({
         allergies: [String],
         lastUpdated: Date
     },
-
-    bookedSessions: [
-        {
-            therapistId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Therapist'
-            },
-            sessionDate: Date,
-            sessionLink: String,
-            status: {
-                type: String,
-                enum: ['scheduled', 'completed', 'cancelled'],
-                default: 'scheduled'
-            }
-        }
-    ],
     resetPasswordToken: String,
     resetPasswordExpiresAt: Date,
     verificationToken: String,
