@@ -43,6 +43,7 @@ import {
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useForumStore from '../store/forumStore';
 import { useAuthStore } from '../store/authStore';
+import useReportStore from '../store/reportStore'; // Import the report store
 import NavBar from '../components/homenav';
 
 const theme = createTheme({
@@ -113,8 +114,8 @@ const normalizePost = (post) => ({
 const MindShareFeed = () => {
   const {
     posts = [],
-    loading,
-    error,
+    loading: forumLoading,
+    error: forumError,
     fetchPosts,
     createPost,
     updatePost,
@@ -122,6 +123,13 @@ const MindShareFeed = () => {
     addComment,
     likePost
   } = useForumStore();
+
+  // Use the report store
+  const { 
+    loading: reportLoading, 
+    error: reportError,
+    createReport
+  } = useReportStore();
 
   const { user } = useAuthStore();
   const [mode, setMode] = useState('light');
@@ -146,6 +154,9 @@ const MindShareFeed = () => {
   const [postToReport, setPostToReport] = useState(null);
   const [reportMenuAnchorEl, setReportMenuAnchorEl] = useState(null);
 
+  // Track loading state for all operations
+  const loading = forumLoading || reportLoading;
+
   const normalizedPosts = posts.map(post => {
     const normalizedPost = normalizePost(post);
     if (optimisticLikes[post._id]) {
@@ -159,14 +170,24 @@ const MindShareFeed = () => {
   }, [fetchPosts]);
 
   useEffect(() => {
-    if (error) {
+    if (forumError) {
       setNotification({
         open: true,
-        message: error,
+        message: forumError,
         severity: 'error'
       });
     }
-  }, [error]);
+  }, [forumError]);
+
+  useEffect(() => {
+    if (reportError) {
+      setNotification({
+        open: true,
+        message: reportError,
+        severity: 'error'
+      });
+    }
+  }, [reportError]);
 
   const handleCreatePost = async () => {
     if (!newPostContent.trim()) return;
@@ -343,9 +364,18 @@ const MindShareFeed = () => {
     setPostToReport(null);
   };
 
+  // Updated to use the report store's createReport function
   const handleSubmitReport = async () => {
+    if (!postToReport) return;
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Use the createReport function from the report store
+      await createReport(
+        postToReport._id,
+        reportReason,
+        reportDescription
+      );
+      
       handleReportDialogClose();
       setNotification({
         open: true,
@@ -487,7 +517,7 @@ const MindShareFeed = () => {
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Typography variant="body2" color="text.secondary">
-                      {post.likedBy.length} likes
+                      {post.likes.length} likes
                     </Typography>
                   </Box>
                   <Typography variant="body2" color="text.secondary">

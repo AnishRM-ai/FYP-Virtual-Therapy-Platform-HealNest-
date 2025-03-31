@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -15,6 +15,8 @@ import {
   Paper
 } from '@mui/material';
 import { Visibility, VisibilityOff, Login, AdminPanelSettings } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import useAdminStore from '../store/adminStore'; // Update the import path
 
 const AdminLoginPage = () => {
   const [credentials, setCredentials] = useState({
@@ -23,8 +25,23 @@ const AdminLoginPage = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  
+  // Get state and actions from the auth store
+  const {
+    loginAdmin,
+    error,
+    isLoading,
+    isAuthenticated,
+    clearError
+  } = useAdminStore();
+
+  useEffect(() => {
+    // Redirect if already authenticated
+    if (isAuthenticated) {
+      navigate('/adminDash');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,47 +50,37 @@ const AdminLoginPage = () => {
       [name]: value
     }));
     // Clear error when user starts typing
-    if (error) setError('');
+    if (error) clearError();
   };
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     
     // Validate input
     if (!credentials.email.trim() || !credentials.password.trim()) {
-      setError('Please fill in all fields');
-      setIsLoading(false);
+      clearError();
+      useAdminStore.setState({ error: 'Please fill in all fields' });
       return;
     }
 
     // Simple email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(credentials.email)) {
-      setError('Please enter a valid email address');
-      setIsLoading(false);
+      clearError();
+      useAdminStore.setState({ error: 'Please enter a valid email address' });
       return;
     }
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Login attempt with:', credentials.email, rememberMe);
-      
-      // Here you would normally make an API call to verify credentials
-      // For demo purposes, we'll simulate a successful login after 1 second
-      
-      setIsLoading(false);
-      
-      // Uncomment the following for testing error states:
-      // setError('Invalid credentials. Please try again.');
-      
-      // Redirect to admin dashboard on success
-      // window.location.href = '/admin/dashboard';
-    }, 1000);
+    // Call the login action from the store
+    const result = await loginAdmin(credentials.email, credentials.password);
+    
+    if (result.success) {
+      navigate('/adminDash');
+    }
   };
 
   return (

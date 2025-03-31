@@ -2,7 +2,7 @@
 const axios = require('axios');
 
 // Khalti API configuration
-const KHALTI_BASE_URL = process.env.KHALTI_BASE_URL || 'https://khalti.com/api/v2';
+const KHALTI_BASE_URL = process.env.KHALTI_BASE_URL || 'https://dev.khalti.com/api/v2/';
 const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
 
 // Verify payment with Khalti
@@ -65,7 +65,7 @@ const refundPayment = async (pidx, amount, remarks) => {
 const initiatePayment = async (amount, productIdentity, productName, customerInfo) => {
     try {
         const response = await axios.post(
-            `${KHALTI_BASE_URL}/payment/initiate/`,
+            `https://a.khalti.com/api/v2/payment/initiate/`,
             {
                 amount: amount * 100, // Khalti expects amount in paisa
                 product_identity: productIdentity,
