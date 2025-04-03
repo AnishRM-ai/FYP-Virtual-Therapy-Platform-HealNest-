@@ -280,6 +280,7 @@ const MindShareFeed = () => {
   const handleLikePost = async (postId) => {
     try {
       const post = normalizedPosts.find(p => p._id === postId);
+
       if (!post) return;
       
       const userLiked = post.likes.includes(user?._id);
@@ -468,7 +469,7 @@ const MindShareFeed = () => {
               <Card key={post._id} sx={{ mb: 2, width: '100%' }}>
                 <CardHeader
                   avatar={
-                    <Avatar src={post.user?.avatar || ''} />
+                    <Avatar src={post.author?.avatar || ''} />
                   }
                   action={
                     <Box sx={{ display: 'flex' }}>
@@ -481,7 +482,7 @@ const MindShareFeed = () => {
                           <Flag fontSize="small" />
                         </IconButton>
                       )}
-                      {post.user?._id === user?._id && (
+                      {post.author?._id === user?._id && (
                         <IconButton
                           size="small"
                           onClick={(e) => handleMenuOpen(e, post)}
@@ -494,7 +495,7 @@ const MindShareFeed = () => {
                   title={
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                        {post.user.name}
+                        {post.user.fullname}
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
                         {post.user.role}
@@ -517,7 +518,7 @@ const MindShareFeed = () => {
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Typography variant="body2" color="text.secondary">
-                      {post.likes.length} likes
+                      {post.likedBy.length} likes
                     </Typography>
                   </Box>
                   <Typography variant="body2" color="text.secondary">
@@ -572,7 +573,7 @@ const MindShareFeed = () => {
                                   }}
                                 >
                                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                    {comment.user?.name || 'Unknown'}
+                                    {comment.userId?.fullname || 'Unknown'}
                                   </Typography>
                                   <Typography variant="body2">
                                     {comment.content}

@@ -115,11 +115,11 @@ exports.deletePost = async (req, res) => {
     }
 
     // Check if user is the author
-    if (post.author.toString() !== req.user.id) {
+    if (post.author.toString() !== req.userId) {
       return res.status(401).json({ msg: 'User not authorized' });
     }
 
-    await post.remove();
+    await Post.findByIdAndDelete(post);
     res.json({ msg: 'Post removed' });
   } catch (err) {
     console.error(err.message);

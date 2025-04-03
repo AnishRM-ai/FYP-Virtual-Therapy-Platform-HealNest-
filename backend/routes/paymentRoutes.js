@@ -2,23 +2,15 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken  = require('../middleware/verifyToken');
-const { 
-    initiateSessionPayment, 
-    verifyAndCompletePayment, 
-    checkPayment,
-    refundSessionPayment
-} = require('../controllers/paymentController');
+const paymentController = require('../controllers/paymentController');
 
 // Initiate payment for a session
-router.post('/initiate', verifyToken, initiateSessionPayment);
+router.post('/initiate', verifyToken, paymentController.initiatePayment);
 
 // Verify payment and proceed
-router.post('/verify', verifyToken, verifyAndCompletePayment);
+router.post('/verify', verifyToken, paymentController.verifyPayment);
 
-// Check payment status
-router.get('/status/:pidx', verifyToken, checkPayment);
-
-// Refund a session payment
-router.post('/refund/:sessionId', verifyToken, refundSessionPayment);
+router.get('/success', paymentController.paymentSuccess);
+router.get('/failure', paymentController.paymentFailure);
 
 module.exports = router;

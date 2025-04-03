@@ -2,7 +2,7 @@ const Session = require('../models/session');
 const {google} = require('googleapis');
 const GoogleToken = require('../models/googleCalendar');
 const User = require('../models/User');
-const {verifyPayment} = require('../services/khaltiService');
+
 
 // Get OAuth2 client and stored credential
 const getOAuth2Client = async (userId) => {

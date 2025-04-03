@@ -33,8 +33,6 @@ import NavBar from '../components/homenav';
 import { useAuthStore } from '../store/authStore';
 import useTherapistStore from '../store/therapistStore';
 
-// Import Khalti Web SDK
-
 const MentalHealthBookingSystem = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -59,8 +57,14 @@ const MentalHealthBookingSystem = () => {
   const [booking, setBooking] = useState(false);
   const [mode, setMode] = useState('light');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [paymentToken, setPaymentToken] = useState('');
+  const [paymentData, setPaymentData] = useState(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  
+  // Payment tracking
+  const [paymentPidx, setPaymentPidx] = useState('');
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
+  const [paymentStatusInterval, setPaymentStatusInterval] = useState(null);
 
   // Filter states
   const [openFilterDialog, setOpenFilterDialog] = useState(false);
@@ -74,6 +78,15 @@ const MentalHealthBookingSystem = () => {
     fetchTherapistsById(id);
     fetchAvailability(id);
   }, [id, fetchTherapistsById, fetchAvailability]);
+
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (paymentStatusInterval) {
+        clearInterval(paymentStatusInterval);
+      }
+    };
+  }, [paymentStatusInterval]);
 
   // Process all available slots
   useEffect(() => {
@@ -122,6 +135,14 @@ const MentalHealthBookingSystem = () => {
     // Reset payment states when new time is selected
     setShowPaymentOptions(false);
     setPaymentSuccess(false);
+    setPaymentPidx('');
+    setPaymentUrl('');
+    
+    // Clear any existing payment status check interval
+    if (paymentStatusInterval) {
+      clearInterval(paymentStatusInterval);
+      setPaymentStatusInterval(null);
+    }
   };
 
   const initiateBookingProcess = () => {
@@ -131,67 +152,142 @@ const MentalHealthBookingSystem = () => {
     }
 
     if (!selectedTime) {
+      toast.error('Please select a time slot first.');
       return;
     }
 
     setShowPaymentOptions(true);
   };
 
-  const handleKhaltiPayment = () => {
-    if (!therapist || !user) return;
+  const handleKhaltiPayment = async () => {
+    if (!therapist || !user || !selectedTime) {
+      toast.error('Missing required information.');
+      return;
+    }
     
-    // Configure Khalti checkout
-    let config = {
-      "publicKey": "test_public_key_3befdb9fd1f34c95a6a183db8bd3ff4e",
-      "productIdentity": `session_${id}_${dayjs(selectedTime).format('YYYYMMDD_HHmm')}`,
-      "productName": `Therapy Session with ${therapist.fullname}`,
-      "productUrl": window.location.href,
-      "eventHandler": {
-        onSuccess(payload) {
-          // Hit your server with the payment token
-          verifyKhaltiPayment(payload);
-        },
-        onError(error) {
-          console.error("Khalti Payment Error:", error);
-          toast.error("Payment failed. Please try again.");
-        },
-        onClose() {
-          console.log("Khalti payment widget closed");
-        }
-      },
-      "amount": therapist.sessionPrice * 100 // Amount in paisa (Nepali currency)
-    };
-    console.log("Using Khalti public key:", config.publicKey);
-    // Initialize Khalti checkout
-    let checkout = new window.KhaltiCheckout(config);
-    checkout.show({ amount: config.amount });
-  };
-
-  const verifyKhaltiPayment = async (payload) => {
     setBooking(true);
+    
     try {
-      // Call your backend to verify the payment
-      const verificationResponse = await axios.post('http://localhost:5555/payment/verify-khalti', {
-        token: payload.token,
-        amount: therapist.sessionPrice * 100
+      // Create a unique product identifier
+      const productIdentity = `SESSION-${id}-${user._id}-${dayjs(selectedTime).format('YYYYMMDD-HHmm')}`;
+      const productName = `Therapy Session with ${therapist.fullname}`;
+      
+      // Customer info
+      const customerInfo = {
+        name: user.fullname || "Client",
+        email: user.email
+      };
+      
+      // Send request to backend to initiate payment
+      const response = await axios.post('http://localhost:5555/payment/initiate', {
+        therapistId: id,
+        clientId: user._id,
+        scheduledTime: selectedTime,
+        duration: 50, // minutes
+        amount: therapist.sessionPrice, // Backend will multiply by 100
+        productIdentity,
+        productName,
+        customerInfo
       });
-
-      if (verificationResponse.data.success) {
-        setPaymentToken(payload.token);
-        setPaymentSuccess(true);
-        // Now proceed with booking the session
-        completeBookingAfterPayment(payload.token);
+      console.log(response);
+      
+      if (response.data.success) {
+        // Store payment information
+        setPaymentPidx(response.data.payment.pidx);
+        setPaymentUrl(response.data.payment.paymentUrl);
+        
+        // Redirect to Khalti payment page
+        window.open(response.data.payment.paymentUrl, '_blank');
+        
+        // Start checking payment status
+        startCheckingPaymentStatus(response.data.payment.pidx);
       } else {
-        toast.error('Payment verification failed. Please try again.');
+        toast.error('Failed to initiate payment. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      toast.error('Payment initiation failed. Please try again.');
+    } finally {
+      setBooking(false);
+    }
+  };
+  
+  const startCheckingPaymentStatus = (pidx) => {
+    // First check immediately
+    checkPaymentStatus(pidx);
+    
+    // Then set up interval to check every 5 seconds
+    const intervalId = setInterval(() => {
+      checkPaymentStatus(pidx);
+    }, 5000);
+    
+    setPaymentStatusInterval(intervalId);
+    
+    // Show toast to notify user
+    toast.success('Payment initiated! We will check the status automatically.', {
+      duration: 5000
+    });
+  };
+  
+  const checkPaymentStatus = async (pidx) => {
+    if (!pidx) return;
+    
+    setCheckingPaymentStatus(true);
+    
+    try {
+      const response = await axios.get(`http://localhost:5555/payment/check/${pidx}`);
+      
+      if (response.data.success) {
+        // If payment is completed, proceed with booking
+        if (response.data.status === 'Completed' || response.data.status === 'completed') {
+          // Clear interval
+          if (paymentStatusInterval) {
+            clearInterval(paymentStatusInterval);
+            setPaymentStatusInterval(null);
+          }
+          
+          setPaymentSuccess(true);
+          setPaymentData(response.data.details);
+          
+          // Complete the booking
+          await verifyAndCompleteBooking(pidx);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+    } finally {
+      setCheckingPaymentStatus(false);
+    }
+  };
+  
+  const verifyAndCompleteBooking = async (pidx) => {
+    setBooking(true);
+    
+    try {
+      // Verify payment
+      const verificationResponse = await axios.post('http://localhost:5555/payment/verify', {
+        pidx,
+        therapistId: id,
+        clientId: user._id,
+        scheduledTime: selectedTime,
+        duration: 50
+      });
+      
+      if (verificationResponse.data.success) {
+        // Create session
+        await completeBookingAfterPayment(pidx);
+      } else {
+        toast.error('Payment verification failed. Please contact support.');
       }
     } catch (error) {
       console.error('Error verifying payment:', error);
-      toast.error('Payment verification failed. Please try again.');
+      toast.error('Payment verification failed. Please contact support.');
+    } finally {
       setBooking(false);
     }
   };
 
-  const completeBookingAfterPayment = async (token) => {
+  const completeBookingAfterPayment = async (pidx) => {
     const bookingData = {
       therapistId: id,
       clientId: user._id,
@@ -199,10 +295,10 @@ const MentalHealthBookingSystem = () => {
       duration: 50,
       payment: {
         amount: therapist.sessionPrice,
-        currency: 'Npr',
+        currency: 'NPR',
         status: 'completed',
         method: 'khalti',
-        transactionId: token
+        transactionId: pidx
       },
     };
 
@@ -230,6 +326,18 @@ const MentalHealthBookingSystem = () => {
     } finally {
       setBooking(false);
     }
+  };
+
+  const handleCancelPayment = () => {
+    // Clear payment status check interval
+    if (paymentStatusInterval) {
+      clearInterval(paymentStatusInterval);
+      setPaymentStatusInterval(null);
+    }
+    
+    setPaymentPidx('');
+    setPaymentUrl('');
+    setShowPaymentOptions(false);
   };
 
   const handleOpenFilterDialog = () => {
@@ -313,7 +421,7 @@ const MentalHealthBookingSystem = () => {
           <Typography variant="body2" sx={{ mb: 3, color: '#7f8c8d' }}>
             Payment completed via Khalti.
             <br />
-            Transaction ID: {paymentToken.substring(0, 10)}...
+            Transaction ID: {paymentPidx.substring(0, 10)}...
           </Typography>
           <Button
             variant="contained"
@@ -510,7 +618,64 @@ const MentalHealthBookingSystem = () => {
                     >
                       Proceed to Payment
                     </Button>
+                  ) : paymentPidx ? (
+                    // Payment is in progress
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle1" sx={{ mb: 2, textAlign: 'center', fontWeight: 'medium' }}>
+                        Payment In Progress
+                      </Typography>
+                      
+                      {checkingPaymentStatus ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                          <CircularProgress size={24} />
+                        </Box>
+                      ) : (
+                        <Typography sx={{ mb: 2, textAlign: 'center' }}>
+                          Waiting for payment confirmation...
+                        </Typography>
+                      )}
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          onClick={handleCancelPayment}
+                          sx={{ mb: 2 }}
+                        >
+                          Cancel
+                        </Button>
+                        
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          onClick={() => checkPaymentStatus(paymentPidx)}
+                          sx={{
+                            backgroundColor: '#3498db',
+                            '&:hover': { backgroundColor: '#2980b9' },
+                            mb: 2
+                          }}
+                        >
+                          Check Status
+                        </Button>
+                      </Box>
+                      
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={() => window.open(paymentUrl, '_blank')}
+                        sx={{
+                          backgroundColor: '#5E338D',
+                          color: 'white',
+                          py: 1.5,
+                          mb: 2,
+                          '&:hover': { backgroundColor: '#4a2a70' }
+                        }}
+                      >
+                        Open Khalti Payment Page
+                      </Button>
+                    </Box>
                   ) : (
+                    // Payment options
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="subtitle1" sx={{ mb: 2, textAlign: 'center', fontWeight: 'medium' }}>
                         Choose Payment Method

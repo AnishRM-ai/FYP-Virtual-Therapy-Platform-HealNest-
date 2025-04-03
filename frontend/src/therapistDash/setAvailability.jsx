@@ -42,6 +42,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
 import useTherapistStore from '../store/therapistStore';
 import dayjs from "dayjs";
+import Layout from "./layout";
 
 // Component for the availability section
 const AvailabilitySection = () => {
@@ -250,6 +251,7 @@ const AvailabilitySection = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const drawerWidth= 240;
   // Availability section content
   return (
     <Grid item xs={6}>
