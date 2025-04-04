@@ -17,7 +17,7 @@ const feedbackRoutes = require('./routes/feedbackroute');
 const PaymentRoutes = require('./routes/paymentRoutes');
 const ForumRoutes = require('./routes/forumRoutes');
 const reportRoutes = require('./routes/reportRoutes');
-
+const updateRoutes = require('./routes/updateProfileRoutes');
 const app = express();
 connectDB();
 
@@ -83,6 +83,7 @@ app.use('/api', therapistRoutes);
 app.use('/session', sessionRoutes);
 app.use('/journals', journalRoutes);
 app.use('/mood', moodRoutes);
+app.use('/setting', updateRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/payment', PaymentRoutes);
 app.use('/forum', ForumRoutes);

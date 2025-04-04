@@ -49,4 +49,5 @@ router.post('/therapist/onboarding',verifyToken, onboardTherapist);
 router.post('/client/onboarding',verifyToken, onboardClient);
 
 
+
 module.exports = router;

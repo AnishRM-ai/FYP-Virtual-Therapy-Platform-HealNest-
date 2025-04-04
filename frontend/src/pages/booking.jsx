@@ -16,7 +16,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  Chip
 } from '@mui/material';
 import {
   CalendarMonth as CalendarIcon,
@@ -24,7 +25,10 @@ import {
   AccessTime as ClockIcon,
   CheckCircle as SuccessIcon,
   FilterList as FilterIcon,
-  Payment as PaymentIcon
+  Payment as PaymentIcon,
+  Psychology as PsychologyIcon,
+  Spa as SpaIcon,
+  Healing as HealingIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
@@ -59,19 +63,28 @@ const MentalHealthBookingSystem = () => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
-  
-  // Payment tracking
   const [paymentPidx, setPaymentPidx] = useState('');
   const [paymentUrl, setPaymentUrl] = useState('');
   const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
   const [paymentStatusInterval, setPaymentStatusInterval] = useState(null);
-
-  // Filter states
   const [openFilterDialog, setOpenFilterDialog] = useState(false);
   const [filterStartTime, setFilterStartTime] = useState('');
   const [filterEndTime, setFilterEndTime] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('');
+
+  // Calming color palette
+  const colors = {
+    primary: '#4a6fa5', // Soft blue
+    secondary: '#88a2aa', // Muted teal
+    accent: '#c0d6df', // Light sky blue
+    background: '#f8f9fa', // Very light gray
+    text: '#333333', // Dark gray for text
+    lightText: '#6c757d', // Medium gray
+    success: '#4caf50', // Green
+    warning: '#ff9800', // Amber
+    error: '#f44336' // Red
+  };
 
   // Fetch therapist and availability on component mount
   useEffect(() => {
@@ -132,13 +145,11 @@ const MentalHealthBookingSystem = () => {
   const handleTimeSelection = (slot) => {
     setSelectedTime(slot.startDateTime);
     setSelectedEndTime(slot.endDateTime);
-    // Reset payment states when new time is selected
     setShowPaymentOptions(false);
     setPaymentSuccess(false);
     setPaymentPidx('');
     setPaymentUrl('');
     
-    // Clear any existing payment status check interval
     if (paymentStatusInterval) {
       clearInterval(paymentStatusInterval);
       setPaymentStatusInterval(null);
@@ -147,7 +158,7 @@ const MentalHealthBookingSystem = () => {
 
   const initiateBookingProcess = () => {
     if (!user) {
-      toast.error('You must be authenticated to book the slot.');
+      toast.error('You must be logged in to book a session.');
       return;
     }
 
@@ -168,41 +179,28 @@ const MentalHealthBookingSystem = () => {
     setBooking(true);
     
     try {
-      // Create a unique product identifier
       const productIdentity = `SESSION-${id}-${user._id}-${dayjs(selectedTime).format('YYYYMMDD-HHmm')}`;
       const productName = `Therapy Session with ${therapist.fullname}`;
       
-      // Customer info
       const customerInfo = {
         name: user.fullname || "Client",
         email: user.email
       };
       
-      // Send request to backend to initiate payment
       const response = await axios.post('http://localhost:5555/payment/initiate', {
-        therapistId: id,
-        clientId: user._id,
-        scheduledTime: selectedTime,
-        duration: 50, // minutes
-        amount: therapist.sessionPrice, // Backend will multiply by 100
-        productIdentity,
-        productName,
-        customerInfo
+        amount: therapist.sessionPrice,
+        purchase_order_id: productIdentity,
+        purchase_order_name: productName,
+        customer_info: customerInfo
       });
-      console.log(response);
       
       if (response.data.success) {
-        // Store payment information
         setPaymentPidx(response.data.payment.pidx);
         setPaymentUrl(response.data.payment.paymentUrl);
-        
-        // Redirect to Khalti payment page
         window.open(response.data.payment.paymentUrl, '_blank');
-        
-        // Start checking payment status
         startCheckingPaymentStatus(response.data.payment.pidx);
       } else {
-        toast.error('Failed to initiate payment. Please try again.');
+        toast.error('Payment initiation failed. Please try again.');
       }
     } catch (error) {
       console.error('Error initiating payment:', error);
@@ -213,17 +211,14 @@ const MentalHealthBookingSystem = () => {
   };
   
   const startCheckingPaymentStatus = (pidx) => {
-    // First check immediately
     checkPaymentStatus(pidx);
     
-    // Then set up interval to check every 5 seconds
     const intervalId = setInterval(() => {
       checkPaymentStatus(pidx);
     }, 5000);
     
     setPaymentStatusInterval(intervalId);
     
-    // Show toast to notify user
     toast.success('Payment initiated! We will check the status automatically.', {
       duration: 5000
     });
@@ -238,9 +233,7 @@ const MentalHealthBookingSystem = () => {
       const response = await axios.get(`http://localhost:5555/payment/check/${pidx}`);
       
       if (response.data.success) {
-        // If payment is completed, proceed with booking
         if (response.data.status === 'Completed' || response.data.status === 'completed') {
-          // Clear interval
           if (paymentStatusInterval) {
             clearInterval(paymentStatusInterval);
             setPaymentStatusInterval(null);
@@ -248,8 +241,6 @@ const MentalHealthBookingSystem = () => {
           
           setPaymentSuccess(true);
           setPaymentData(response.data.details);
-          
-          // Complete the booking
           await verifyAndCompleteBooking(pidx);
         }
       }
@@ -264,17 +255,11 @@ const MentalHealthBookingSystem = () => {
     setBooking(true);
     
     try {
-      // Verify payment
       const verificationResponse = await axios.post('http://localhost:5555/payment/verify', {
-        pidx,
-        therapistId: id,
-        clientId: user._id,
-        scheduledTime: selectedTime,
-        duration: 50
+        pidx
       });
       
       if (verificationResponse.data.success) {
-        // Create session
         await completeBookingAfterPayment(pidx);
       } else {
         toast.error('Payment verification failed. Please contact support.');
@@ -329,7 +314,6 @@ const MentalHealthBookingSystem = () => {
   };
 
   const handleCancelPayment = () => {
-    // Clear payment status check interval
     if (paymentStatusInterval) {
       clearInterval(paymentStatusInterval);
       setPaymentStatusInterval(null);
@@ -366,9 +350,15 @@ const MentalHealthBookingSystem = () => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100vh'
+        height: '100vh',
+        backgroundColor: colors.background
       }}>
-        <CircularProgress />
+        <Box textAlign="center">
+          <CircularProgress size={60} thickness={4} sx={{ color: colors.primary }} />
+          <Typography variant="h6" mt={2} color={colors.text}>
+            Loading therapist information...
+          </Typography>
+        </Box>
       </Box>
     );
   }
@@ -379,9 +369,13 @@ const MentalHealthBookingSystem = () => {
       <Box sx={{
         maxWidth: 1200,
         margin: 'auto',
-        p: 3
+        p: 3,
+        backgroundColor: colors.background,
+        minHeight: '100vh'
       }}>
-        <Typography>Therapist not found</Typography>
+        <Typography variant="h5" color={colors.text}>
+          Therapist not found
+        </Typography>
       </Box>
     );
   }
@@ -396,7 +390,7 @@ const MentalHealthBookingSystem = () => {
         justifyContent: 'center',
         minHeight: '100vh',
         textAlign: 'center',
-        backgroundColor: '#f0f4f8'
+        backgroundColor: colors.background
       }}>
         <Paper elevation={3} sx={{
           p: 4,
@@ -404,37 +398,84 @@ const MentalHealthBookingSystem = () => {
           backgroundColor: 'white',
           textAlign: 'center',
           maxWidth: 500,
-          width: '100%'
+          width: '100%',
+          boxShadow: '0 8px 32px rgba(31, 38, 135, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.18)'
         }}>
-          <SuccessIcon sx={{
-            fontSize: 80,
-            color: '#4caf50',
-            mb: 2
-          }} />
-          <Typography variant="h4" sx={{ mb: 2, fontWeight: 600, color: '#2c3e50' }}>
+          <Box sx={{
+            backgroundColor: colors.success,
+            color: 'white',
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px'
+          }}>
+            <SuccessIcon sx={{ fontSize: 50 }} />
+          </Box>
+          <Typography variant="h4" sx={{ 
+            mb: 2, 
+            fontWeight: 600, 
+            color: colors.text,
+            fontFamily: '"Playfair Display", serif'
+          }}>
             Appointment Confirmed
           </Typography>
-          <Typography variant="body1" sx={{ mb: 3, color: '#34495e' }}>
-            Your session with {therapist.fullname} is scheduled for{' '}
-            {dayjs(selectedTime).format('MMMM D, YYYY [at] h:mm A')}.
+          <Typography variant="body1" sx={{ 
+            mb: 3, 
+            color: colors.lightText,
+            lineHeight: 1.6
+          }}>
+            Your session with <strong>{therapist.fullname}</strong> is scheduled for{' '}
+            <strong>{dayjs(selectedTime).format('MMMM D, YYYY [at] h:mm A')}</strong>.
           </Typography>
-          <Typography variant="body2" sx={{ mb: 3, color: '#7f8c8d' }}>
-            Payment completed via Khalti.
-            <br />
-            Transaction ID: {paymentPidx.substring(0, 10)}...
-          </Typography>
+          
+          <Box sx={{
+            backgroundColor: colors.accent,
+            p: 2,
+            borderRadius: 2,
+            mb: 3,
+            textAlign: 'left'
+          }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+              Payment Details:
+            </Typography>
+            <Typography variant="body2">
+              Amount: NPR {therapist.sessionPrice}
+            </Typography>
+            <Typography variant="body2">
+              Method: Khalti
+            </Typography>
+            <Typography variant="body2">
+              Transaction ID: {paymentPidx.substring(0, 10)}...
+            </Typography>
+          </Box>
+          
           <Button
             variant="contained"
             href="/client-dashboard"
             target="_blank"
             sx={{
-              backgroundColor: '#3498db',
-              '&:hover': { backgroundColor: '#2980b9' },
-              mb: 2
+              backgroundColor: colors.primary,
+              '&:hover': { backgroundColor: '#3a5a80' },
+              mb: 2,
+              px: 4,
+              py: 1.5,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontSize: '1rem'
             }}
           >
-            Go back to Dashboard
+            Go to Dashboard
           </Button>
+          <Typography variant="caption" display="block" sx={{ 
+            color: colors.lightText,
+            mt: 2
+          }}>
+            A confirmation has been sent to your email
+          </Typography>
         </Paper>
       </Container>
     );
@@ -442,166 +483,358 @@ const MentalHealthBookingSystem = () => {
 
   return (
     <Box sx={{
-      backgroundColor: mode === 'light' ? '#f0f4f8' : 'background.default',
+      backgroundColor: colors.background,
       minHeight: '100vh'
     }}>
       <NavBar mode={mode} setMode={setMode} />
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 6 }}>
         <Grid container spacing={4}>
           {/* Therapist Profile Section */}
           <Grid item xs={12} md={7}>
             <Paper
-              elevation={3}
+              elevation={0}
               sx={{
                 p: 4,
                 borderRadius: 3,
-                backgroundColor: 'white'
+                backgroundColor: 'white',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                border: '1px solid rgba(0, 0, 0, 0.05)'
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 4,
+                flexDirection: isMobile ? 'column' : 'row',
+                textAlign: isMobile ? 'center' : 'left'
+              }}>
                 <Avatar
                   sx={{
-                    width: 100,
-                    height: 100,
-                    mr: 3,
-                    backgroundColor: '#3498db'
+                    width: 120,
+                    height: 120,
+                    mr: isMobile ? 0 : 3,
+                    mb: isMobile ? 2 : 0,
+                    backgroundColor: colors.primary,
+                    fontSize: '3rem'
                   }}
                 >
                   {therapist.fullname?.charAt(0)}
                 </Avatar>
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 600, color: '#2c3e50' }}>
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 600, 
+                    color: colors.text,
+                    fontFamily: '"Playfair Display", serif',
+                    mb: 1
+                  }}>
                     {therapist.fullname}
                   </Typography>
-                  <Typography variant="subtitle1" sx={{ color: '#34495e', mb: 1 }}>
-                    {therapist.education?.map(edu => `${edu.degree}, ${edu.institution} (${edu.year})`).join(', ')}
+                  <Typography variant="subtitle1" sx={{ 
+                    color: colors.secondary, 
+                    mb: 1,
+                    fontStyle: 'italic'
+                  }}>
+                    Mental Health Professional
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: isMobile ? 'center' : 'flex-start',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                    mt: 1
+                  }}>
                     <Rating
                       value={therapist.rating || 0}
-                      precision={0.1}
+                      precision={0.5}
                       readOnly
-                      sx={{ mr: 1 }}
+                      sx={{ color: colors.primary }}
                     />
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: colors.lightText }}>
                       {therapist.rating || 0} ({therapist.reviews || 0} reviews)
                     </Typography>
                   </Box>
+                  
+                  <Box sx={{ mt: 2 }}>
+  {therapist.specializations && therapist.specializations.length > 0 ? (
+    // Map through specializations array to create a chip for each one
+    therapist.specializations.map((specialization, index) => (
+      <Chip
+        key={index}
+        icon={<PsychologyIcon />}
+        label={specialization}
+        sx={{ mr: 1, mb: 1 }}
+      />
+    ))
+  ) : (
+    // Fallback if no specializations are available
+    <Chip
+      icon={<PsychologyIcon />}
+      label="Integrative Therapy"
+      sx={{ mr: 1, mb: 1 }}
+    />
+  )}
+  <Chip
+    icon={<HealingIcon />}
+    label={`${therapist.yearsOfExperience || '5+'} years experience`}
+    sx={{ mr: 1, mb: 1 }}
+  />
+</Box>
                 </Box>
               </Box>
 
-              <Typography variant="h6" sx={{ mb: 2, color: '#2c3e50' }}>
-                About
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 3, color: '#34495e' }}>
-                {therapist.bio || 'No bio available.'}
-              </Typography>
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" sx={{ 
+                  mb: 2, 
+                  color: colors.text,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <SpaIcon sx={{ mr: 1, color: colors.primary }} />
+                  Professional Bio
+                </Typography>
+                <Typography variant="body1" sx={{ 
+                  mb: 3, 
+                  color: colors.text,
+                  lineHeight: 1.8
+                }}>
+                  {therapist.bio || 'No bio available.'}
+                </Typography>
+              </Box>
 
-              <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                my: 2
-              }}>
-                <Typography variant="h6" sx={{ color: '#2c3e50' }}>
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" sx={{ 
+                  mb: 2, 
+                  color: colors.text,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <CalendarIcon sx={{ mr: 1, color: colors.primary }} />
                   Available Time Slots
                 </Typography>
-                <Button
-                  startIcon={<FilterIcon />}
-                  onClick={handleOpenFilterDialog}
-                  variant="outlined"
-                >
-                  Filter Slots
-                </Button>
-              </Box>
-
-              {availableSlots.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                  {availableSlots.map((slot, index) => (
-                    <Button
-                      key={index}
-                      variant={selectedTime === slot.startDateTime ? 'contained' : 'outlined'}
-                      onClick={() => handleTimeSelection(slot)}
-                      sx={{
-                        minWidth: 120,
-                        backgroundColor: selectedTime === slot.startDateTime ? '#3498db' : 'transparent',
-                        color: selectedTime === slot.startDateTime ? 'white' : '#3498db',
-                        '&:hover': {
-                          backgroundColor: selectedTime === slot.startDateTime ? '#2980b9' : 'rgba(52, 152, 219, 0.1)'
-                        },
-                        opacity: slot.isAvailable ? 1 : 0.5
-                      }}
-                      disabled={!slot.isAvailable}
-                    >
-                      {dayjs(slot.startDateTime).format('MMMM D, YYYY h:mm A')} - {dayjs(slot.endDateTime).format('h:mm A')}
-                      {!slot.isAvailable && ' (Booked)'}
-                    </Button>
-                  ))}
+                
+                <Box sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 3
+                }}>
+                  <Typography variant="body2" sx={{ color: colors.lightText }}>
+                    {filterDate ? dayjs(filterDate).format('MMMM D, YYYY') : 'All available dates'}
+                  </Typography>
+                  <Button
+                    startIcon={<FilterIcon />}
+                    onClick={handleOpenFilterDialog}
+                    variant="outlined"
+                    sx={{
+                      borderColor: colors.secondary,
+                      color: colors.text,
+                      '&:hover': {
+                        borderColor: colors.primary
+                      }
+                    }}
+                  >
+                    Filter
+                  </Button>
                 </Box>
-              ) : (
-                <Typography color="text.secondary">
-                  No slots available for the selected criteria.
-                </Typography>
-              )}
+
+                {availableSlots.length > 0 ? (
+                  <Grid container spacing={2}>
+                    {availableSlots.map((slot, index) => (
+                      <Grid item xs={12} sm={6} key={index}>
+                        <Paper
+                          elevation={0}
+                          onClick={() => slot.isAvailable && handleTimeSelection(slot)}
+                          sx={{
+                            p: 2,
+                            borderRadius: 2,
+                            border: `1px solid ${
+                              selectedTime === slot.startDateTime 
+                                ? colors.primary 
+                                : 'rgba(0, 0, 0, 0.12)'
+                            }`,
+                            backgroundColor: selectedTime === slot.startDateTime 
+                              ? `${colors.primary}10` 
+                              : 'white',
+                            cursor: slot.isAvailable ? 'pointer' : 'default',
+                            opacity: slot.isAvailable ? 1 : 0.6,
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              borderColor: slot.isAvailable ? colors.primary : 'rgba(0, 0, 0, 0.12)',
+                              backgroundColor: slot.isAvailable ? `${colors.primary}08` : 'white'
+                            }
+                          }}
+                        >
+                          <Typography variant="subtitle2" sx={{ 
+                            fontWeight: 600,
+                            color: selectedTime === slot.startDateTime 
+                              ? colors.primary 
+                              : colors.text
+                          }}>
+                            {dayjs(slot.startDateTime).format('MMMM D, YYYY')}
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: selectedTime === slot.startDateTime 
+                              ? colors.primary 
+                              : colors.lightText
+                          }}>
+                            {dayjs(slot.startDateTime).format('h:mm A')} - {dayjs(slot.endDateTime).format('h:mm A')}
+                          </Typography>
+                          {!slot.isAvailable && (
+                            <Chip 
+                              label="Booked" 
+                              size="small" 
+                              sx={{ 
+                                mt: 1,
+                                backgroundColor: '#ffe0b2',
+                                color: '#e65100'
+                              }} 
+                            />
+                          )}
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      textAlign: 'center',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: 2
+                    }}
+                  >
+                    <Typography color="text.secondary">
+                      No available slots match your criteria.
+                    </Typography>
+                    <Button 
+                      onClick={resetFilters} 
+                      sx={{ 
+                        mt: 2,
+                        color: colors.primary
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  </Paper>
+                )}
+              </Box>
             </Paper>
           </Grid>
 
           {/* Booking Summary Section */}
           <Grid item xs={12} md={5}>
             <Paper
-              elevation={3}
+              elevation={0}
               sx={{
                 p: 4,
                 borderRadius: 3,
                 backgroundColor: 'white',
                 position: 'sticky',
-                top: theme.spacing(4)
+                top: theme.spacing-6,
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                border: '1px solid rgba(0, 0, 0, 0.05)'
               }}
             >
-              <Typography variant="h6" sx={{ mb: 3, color: '#2c3e50' }}>
-                Booking Summary
+              <Typography variant="h5" sx={{ 
+                mb: 3, 
+                color: colors.text,
+                fontWeight: 600,
+                fontFamily: '"Playfair Display", serif'
+              }}>
+                Session Summary
               </Typography>
 
               {selectedTime ? (
                 <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <CalendarIcon sx={{ mr: 1, color: '#3498db' }} />
-                      <Typography>Date</Typography>
-                    </Box>
-                    <Typography fontWeight="medium">
-                      {dayjs(selectedTime).format('MMMM D, YYYY')}
+                  <Box sx={{ 
+                    mb: 3,
+                    p: 2,
+                    backgroundColor: `${colors.accent}20`,
+                    borderRadius: 2
+                  }}>
+                    <Typography variant="subtitle2" sx={{ 
+                      mb: 1,
+                      color: colors.lightText,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <CalendarIcon sx={{ mr: 1, fontSize: '1rem', color: colors.primary }} />
+                      Session Date
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {dayjs(selectedTime).format('dddd, MMMM D, YYYY')}
                     </Typography>
                   </Box>
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ClockIcon sx={{ mr: 1, color: '#3498db' }} />
-                      <Typography>Time</Typography>
-                    </Box>
-                    <Typography fontWeight="medium">
+                  <Box sx={{ 
+                    mb: 3,
+                    p: 2,
+                    backgroundColor: `${colors.accent}20`,
+                    borderRadius: 2
+                  }}>
+                    <Typography variant="subtitle2" sx={{ 
+                      mb: 1,
+                      color: colors.lightText,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <ClockIcon sx={{ mr: 1, fontSize: '1rem', color: colors.primary }} />
+                      Session Time
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
                       {dayjs(selectedTime).format('h:mm A')} - {dayjs(selectedEndTime).format('h:mm A')}
                     </Typography>
                   </Box>
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <VideoCallIcon sx={{ mr: 1, color: '#3498db' }} />
-                      <Typography>Session Type</Typography>
-                    </Box>
-                    <Typography fontWeight="medium">
-                      Online Video Session
+                  <Box sx={{ 
+                    mb: 3,
+                    p: 2,
+                    backgroundColor: `${colors.accent}20`,
+                    borderRadius: 2
+                  }}>
+                    <Typography variant="subtitle2" sx={{ 
+                      mb: 1,
+                      color: colors.lightText,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <VideoCallIcon sx={{ mr: 1, fontSize: '1rem', color: colors.primary }} />
+                      Session Details
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium" sx={{ mb: 1 }}>
+                      Online Video Session (Zoom)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      A secure link will be provided after booking
                     </Typography>
                   </Box>
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <PaymentIcon sx={{ mr: 1, color: '#3498db' }} />
-                      <Typography>Session Price</Typography>
-                    </Box>
-                    <Typography fontWeight="medium">
+                  <Box sx={{ 
+                    mb: 4,
+                    p: 2,
+                    backgroundColor: `${colors.accent}20`,
+                    borderRadius: 2
+                  }}>
+                    <Typography variant="subtitle2" sx={{ 
+                      mb: 1,
+                      color: colors.lightText,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <PaymentIcon sx={{ mr: 1, fontSize: '1rem', color: colors.primary }} />
+                      Payment
+                    </Typography>
+                    <Typography variant="h6" fontWeight="medium" sx={{ color: colors.primary }}>
                       NPR {therapist.sessionPrice || 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Inclusive of all taxes
                     </Typography>
                   </Box>
 
@@ -611,36 +844,65 @@ const MentalHealthBookingSystem = () => {
                       variant="contained"
                       onClick={initiateBookingProcess}
                       sx={{
-                        backgroundColor: '#3498db',
+                        backgroundColor: colors.primary,
                         py: 1.5,
-                        '&:hover': { backgroundColor: '#2980b9' }
+                        borderRadius: 2,
+                        '&:hover': { 
+                          backgroundColor: '#3a5a80',
+                          boxShadow: '0 4px 12px rgba(74, 111, 165, 0.3)'
+                        },
+                        fontSize: '1rem',
+                        textTransform: 'none'
                       }}
                     >
-                      Proceed to Payment
+                      Continue to Payment
                     </Button>
                   ) : paymentPidx ? (
-                    // Payment is in progress
                     <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle1" sx={{ mb: 2, textAlign: 'center', fontWeight: 'medium' }}>
+                      <Typography variant="subtitle1" sx={{ 
+                        mb: 2, 
+                        textAlign: 'center', 
+                        fontWeight: 'medium',
+                        color: colors.text
+                      }}>
                         Payment In Progress
                       </Typography>
                       
                       {checkingPaymentStatus ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                          <CircularProgress size={24} />
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'center', 
+                          my: 2 
+                        }}>
+                          <CircularProgress size={24} sx={{ color: colors.primary }} />
                         </Box>
                       ) : (
-                        <Typography sx={{ mb: 2, textAlign: 'center' }}>
+                        <Typography sx={{ 
+                          mb: 2, 
+                          textAlign: 'center',
+                          color: colors.lightText
+                        }}>
                           Waiting for payment confirmation...
                         </Typography>
                       )}
                       
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        gap: 2,
+                        mb: 2
+                      }}>
                         <Button
                           fullWidth
                           variant="outlined"
                           onClick={handleCancelPayment}
-                          sx={{ mb: 2 }}
+                          sx={{
+                            borderColor: colors.secondary,
+                            color: colors.text,
+                            '&:hover': {
+                              borderColor: colors.primary
+                            }
+                          }}
                         >
                           Cancel
                         </Button>
@@ -650,9 +912,11 @@ const MentalHealthBookingSystem = () => {
                           variant="contained"
                           onClick={() => checkPaymentStatus(paymentPidx)}
                           sx={{
-                            backgroundColor: '#3498db',
-                            '&:hover': { backgroundColor: '#2980b9' },
-                            mb: 2
+                            backgroundColor: colors.primary,
+                            '&:hover': { 
+                              backgroundColor: '#3a5a80',
+                              boxShadow: '0 4px 12px rgba(74, 111, 165, 0.3)'
+                            }
                           }}
                         >
                           Check Status
@@ -668,17 +932,27 @@ const MentalHealthBookingSystem = () => {
                           color: 'white',
                           py: 1.5,
                           mb: 2,
-                          '&:hover': { backgroundColor: '#4a2a70' }
+                          borderRadius: 2,
+                          '&:hover': { 
+                            backgroundColor: '#4a2a70',
+                            boxShadow: '0 4px 12px rgba(94, 51, 141, 0.3)'
+                          },
+                          fontSize: '1rem',
+                          textTransform: 'none'
                         }}
                       >
-                        Open Khalti Payment Page
+                        Open Khalti Payment
                       </Button>
                     </Box>
                   ) : (
-                    // Payment options
                     <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle1" sx={{ mb: 2, textAlign: 'center', fontWeight: 'medium' }}>
-                        Choose Payment Method
+                      <Typography variant="subtitle1" sx={{ 
+                        mb: 3, 
+                        textAlign: 'center', 
+                        fontWeight: 'medium',
+                        color: colors.text
+                      }}>
+                        Secure Payment Options
                       </Typography>
                       <Button
                         fullWidth
@@ -686,17 +960,32 @@ const MentalHealthBookingSystem = () => {
                         onClick={handleKhaltiPayment}
                         disabled={booking}
                         sx={{
-                          backgroundColor: '#5E338D', // Khalti's purple color
+                          backgroundColor: '#5E338D',
                           color: 'white',
                           py: 1.5,
                           mb: 2,
-                          '&:hover': { backgroundColor: '#4a2a70' }
+                          borderRadius: 2,
+                          '&:hover': { 
+                            backgroundColor: '#4a2a70',
+                            boxShadow: '0 4px 12px rgba(94, 51, 141, 0.3)'
+                          },
+                          fontSize: '1rem',
+                          textTransform: 'none'
                         }}
                       >
-                        {booking ? <CircularProgress size={24} /> : 'Pay with Khalti'}
+                        {booking ? (
+                          <>
+                            <CircularProgress size={24} sx={{ color: 'white', mr: 1 }} />
+                            Processing...
+                          </>
+                        ) : 'Pay with Khalti'}
                       </Button>
-                      <Typography variant="body2" sx={{ textAlign: 'center', color: '#7f8c8d' }}>
-                        By proceeding with the payment, you agree to our terms and policies.
+                      <Typography variant="body2" sx={{ 
+                        textAlign: 'center', 
+                        color: colors.lightText,
+                        fontSize: '0.75rem'
+                      }}>
+                        Your payment is secure and encrypted. We don't store your payment details.
                       </Typography>
                     </Box>
                   )}
@@ -710,13 +999,32 @@ const MentalHealthBookingSystem = () => {
                   textAlign: 'center',
                   py: 4
                 }}>
-                  <CalendarIcon sx={{
-                    fontSize: 60,
-                    color: '#bdc3c7',
+                  <Box sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    backgroundColor: `${colors.accent}30`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     mb: 2
-                  }} />
-                  <Typography color="text.secondary">
-                    Select a date and time to book your session
+                  }}>
+                    <CalendarIcon sx={{
+                      fontSize: 40,
+                      color: colors.primary
+                    }} />
+                  </Box>
+                  <Typography variant="body1" sx={{ 
+                    color: colors.lightText,
+                    mb: 1
+                  }}>
+                    Select an available time slot
+                  </Typography>
+                  <Typography variant="caption" sx={{ 
+                    color: colors.lightText,
+                    maxWidth: 300
+                  }}>
+                    Choose from the available dates and times to book your session
                   </Typography>
                 </Box>
               )}
@@ -726,10 +1034,26 @@ const MentalHealthBookingSystem = () => {
       </Container>
 
       {/* Filter Dialog */}
-      <Dialog open={openFilterDialog} onClose={handleCloseFilterDialog}>
-        <DialogTitle>Filter Time Slots</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+      <Dialog 
+        open={openFilterDialog} 
+        onClose={handleCloseFilterDialog}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            width: '100%',
+            maxWidth: '400px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          fontWeight: 600,
+          color: colors.text,
+          borderBottom: `1px solid ${colors.accent}`
+        }}>
+          Filter Sessions
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField
               label="Date"
               type="date"
@@ -737,6 +1061,8 @@ const MentalHealthBookingSystem = () => {
               onChange={(e) => setFilterDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              variant="outlined"
+              size="small"
             />
             <TextField
               label="Start Time"
@@ -746,6 +1072,8 @@ const MentalHealthBookingSystem = () => {
               InputLabelProps={{ shrink: true }}
               inputProps={{ step: 300 }}
               fullWidth
+              variant="outlined"
+              size="small"
             />
             <TextField
               label="End Time"
@@ -755,6 +1083,8 @@ const MentalHealthBookingSystem = () => {
               InputLabelProps={{ shrink: true }}
               inputProps={{ step: 300 }}
               fullWidth
+              variant="outlined"
+              size="small"
             />
             <TextField
               select
@@ -762,20 +1092,44 @@ const MentalHealthBookingSystem = () => {
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               fullWidth
+              variant="outlined"
+              size="small"
               SelectProps={{ native: true }}
             >
               <option value="all">All Slots</option>
-              <option value="available">Available Slots</option>
-              <option value="booked">Booked Slots</option>
+              <option value="available">Available Only</option>
+              <option value="booked">Booked Only</option>
             </TextField>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={resetFilters} color="secondary">
-            Reset Filters
+        <DialogActions sx={{ 
+          px: 3, 
+          py: 2,
+          borderTop: `1px solid ${colors.accent}`
+        }}>
+          <Button 
+            onClick={resetFilters} 
+            sx={{ 
+              color: colors.lightText,
+              '&:hover': {
+                color: colors.primary
+              }
+            }}
+          >
+            Reset
           </Button>
-          <Button onClick={handleApplyFilters} color="primary">
-            Apply Filters
+          <Button 
+            onClick={handleApplyFilters} 
+            sx={{ 
+              backgroundColor: colors.primary,
+              color: 'white',
+              px: 3,
+              '&:hover': {
+                backgroundColor: '#3a5a80'
+              }
+            }}
+          >
+            Apply
           </Button>
         </DialogActions>
       </Dialog>
