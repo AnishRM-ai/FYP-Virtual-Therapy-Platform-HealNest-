@@ -188,6 +188,8 @@ const MentalHealthBookingSystem = () => {
       };
       
       const response = await axios.post('http://localhost:5555/payment/initiate', {
+        therapistId: id,
+        clientId: user._id,
         amount: therapist.sessionPrice,
         purchase_order_id: productIdentity,
         purchase_order_name: productName,
@@ -195,10 +197,10 @@ const MentalHealthBookingSystem = () => {
       });
       
       if (response.data.success) {
-        setPaymentPidx(response.data.payment.pidx);
-        setPaymentUrl(response.data.payment.paymentUrl);
-        window.open(response.data.payment.paymentUrl, '_blank');
-        startCheckingPaymentStatus(response.data.payment.pidx);
+        setPaymentPidx(response.data.data.pidx);
+        setPaymentUrl(response.data.data.payment_url);
+        window.open(response.data.data.payment_url, '_blank');
+        startCheckingPaymentStatus(response.data.data.pidx);
       } else {
         toast.error('Payment initiation failed. Please try again.');
       }
@@ -808,7 +810,7 @@ const MentalHealthBookingSystem = () => {
                       Session Details
                     </Typography>
                     <Typography variant="body1" fontWeight="medium" sx={{ mb: 1 }}>
-                      Online Video Session (Zoom)
+                      Online Video Session (GoogleMeet)
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       A secure link will be provided after booking

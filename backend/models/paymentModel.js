@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const PaymentSchema = new mongoose.Schema({
     therapistId: {
@@ -11,7 +11,7 @@ const PaymentSchema = new mongoose.Schema({
         ref:'Client',
         required: true
     },
-    amout:{
+    amount:{
         type:Number,
         required: true
     },
@@ -47,3 +47,5 @@ const PaymentSchema = new mongoose.Schema({
 });
 
 const Payment = mongoose.model('Payment', PaymentSchema);
+
+module.exports = Payment;

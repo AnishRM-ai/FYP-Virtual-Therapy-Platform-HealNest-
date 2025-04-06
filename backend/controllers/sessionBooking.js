@@ -359,14 +359,13 @@ const getSessionDetails = async (req, res) => {
     }
 };
 
-module.exports = {
-    getSessionDetails
-};
 
 module.exports  = {createSession,
                      getTherapistSession,
                     cancelSession,
                 updateTherapistNotes,
             setSessionStatusToCompleted,
-        getClientSessions, deleteSession};
+        getClientSessions,
+         deleteSession,
+         getSessionDetails};
 

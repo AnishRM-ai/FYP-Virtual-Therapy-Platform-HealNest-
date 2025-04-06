@@ -1,12 +1,13 @@
 const axios = require('axios');
 const khaltiConfig = require('../config/khaltiConfig');
 const User = require('../models/User');
+const Payment = require('../models/paymentModel');
 
 const paymentController = {
     //initiate khalti payment
     initiatePayment: async (req, res) => {
         try{
-            const {amount, purchase_order_id, purchase_order_name, customer_info} = req.body;
+            const {amount, purchase_order_id, purchase_order_name, customer_info, therapistId, clientId} = req.body;
 
             //validate required fields
             if(!amount|| !purchase_order_id || !purchase_order_name) {
@@ -16,7 +17,7 @@ const paymentController = {
                 });
             }
             const payload = {
-                return_url: 'http://localhost:5173/khalti/verify',
+                return_url: 'http://localhost:5173/paymentSuccess',
                 website_url:'http://localhost:5173',
                 amount: amount * 100,
                 purchase_order_id,
@@ -34,6 +35,19 @@ const paymentController = {
                     },
                 }
             );
+
+            //save pending payment in db
+        const payment =  new Payment({
+                therapistId, 
+                clientId,
+                amount: amount,
+                status:'pending',
+                paymentMethod:'khalti',
+                transactionId: response.data.pidx,
+                providerResponse: response.data
+            });
+
+            await payment.save();
 
             res.json({
                 success: true,

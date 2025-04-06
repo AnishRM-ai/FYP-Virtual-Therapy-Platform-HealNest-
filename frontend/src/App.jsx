@@ -26,6 +26,7 @@ import HealNestAdminDashboard from "./admindashboard/dashboard";
 import MindShareFeed from "./pages/feedPage.jsx";
 import PaymentSuccessPage from "./components/paymentSuccess.jsx";
 import AdminLoginPage from "./admindashboard/adminlogin.jsx";
+import ProfileEditPage from "./therapistDash/profile.jsx";
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
 
@@ -148,6 +149,8 @@ const App = () => {
         <Route path="/feed" element={<MindShareFeed/>}/>
 
         <Route path="/paymentSuccess" element={<PaymentSuccessPage/>}/>
+
+        <Route path="/profile" element={<ProfileEditPage/>}/>
 
         <Route
           path="/select-role"
