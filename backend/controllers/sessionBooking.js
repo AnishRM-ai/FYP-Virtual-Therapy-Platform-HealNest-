@@ -2,6 +2,8 @@ const Session = require('../models/session');
 const {google} = require('googleapis');
 const GoogleToken = require('../models/googleCalendar');
 const User = require('../models/User');
+const paymentController = require('../controllers/paymentController');
+
 
 
 // Get OAuth2 client and stored credential
@@ -18,6 +20,7 @@ const getOAuth2Client = async (userId) => {
     oauth2Client.setCredentials({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
+        expiry_date: tokenData.expiry_date
     });
 
     //Check if the access token is expired
@@ -25,7 +28,7 @@ const getOAuth2Client = async (userId) => {
     if(new Date(tokenData.expiry_date).getTime() < now) {
         console.log('Access token is expired, Refreshing...');
         try{
-            const {credentials} = await oauth2Client.refreshAccessToken();
+            const {credentials} = await oauth2Client.getAccessToken();
             //update the token in db
             tokenData.access_token = credentials.access_token;
             tokenData.expiry_date = credentials.expiry_date;
@@ -41,26 +44,7 @@ const getOAuth2Client = async (userId) => {
 // create a new session and sync with google calendar.
 const createSession = async (req, res) => {
     try {
-        const { pidx, therapistId, clientId, scheduledTime, duration } = req.body;
-        
-        // First, verify the payment is completed
-        const payment = await verifyPayment(pidx);
-        if (payment.status !== 'completed') {
-            return res.status(400).json({
-                success: false,
-                message: 'Payment not completed',
-                error: 'Payment verification failed'
-            });
-        }
-
-        // Update payment record in database
-        await Payment.findOneAndUpdate(
-            { transactionId: pidx },
-            { 
-                status: 'paid',
-                providerResponse: payment
-            }
-        );
+        const {therapistId, clientId, scheduledTime, duration } = req.body;
 
         const therapist = await User.findById(therapistId).select('fullname email');
         const client = await User.findById(clientId).select('fullname email');
@@ -106,11 +90,6 @@ const createSession = async (req, res) => {
             duration,
             status: 'scheduled',
             meetingLink,
-            payment: {
-                amount: payment.amount / 100, // Convert from paisa to currency units
-                status: 'completed',
-                transactionId: pidx
-            },
             calendarEventId: calendarEvent.data.id
         });
 

@@ -23,7 +23,9 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Select
+  Select,
+  Divider,
+  Tooltip
 } from '@mui/material';
 import {
   HomeOutlined,
@@ -36,7 +38,9 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Google as GoogleIcon,
+  Sync as SyncIcon
 } from '@mui/icons-material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
@@ -60,8 +64,11 @@ const AvailabilitySection = () => {
   const [openCreateModal, setOpenCreateModal] = useState(false);
   const [openUpdateModal, setOpenUpdateModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [openImportModal, setOpenImportModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [syncInProgress, setSyncInProgress] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -70,6 +77,14 @@ const AvailabilitySection = () => {
     endTime: dayjs().hour(10).minute(0),
     isAvailable: true,
     timezone: 'GMT'
+  });
+
+  // Import settings
+  const [importSettings, setImportSettings] = useState({
+    startDate: dayjs(),
+    endDate: dayjs().add(30, 'day'),
+    excludeWeekends: false,
+    importBusyAsUnavailable: true
   });
 
   // Extract the authenticated therapist's availability slots
@@ -108,12 +123,86 @@ const AvailabilitySection = () => {
     setOpenDeleteModal(true);
   };
 
+  // Function to handle opening the import modal
+  const handleOpenImportModal = () => {
+    setOpenImportModal(true);
+  };
+
   // Function to handle form input changes
   const handleInputChange = (field, value) => {
     setFormData({
       ...formData,
       [field]: value
     });
+  };
+
+  // Function to handle import settings changes
+  const handleImportSettingChange = (field, value) => {
+    setImportSettings({
+      ...importSettings,
+      [field]: value
+    });
+  };
+
+  // Function to handle Google Calendar connection
+  const handleGoogleCalendarConnect = () => {
+    console.log('Connecting to Google Calendar');
+    const googleAuthUrl = 'http://localhost:5555/api/calendar/auth/google';
+    
+    // Open a popup window for OAuth authentication
+    const authWindow = window.open(googleAuthUrl, '_blank', 'width=600,height=700');
+    
+    // Listen for messages from the popup window
+    window.addEventListener('message', (event) => {
+      if (event.origin === 'http://localhost:5555' && event.data && event.data.type === 'google-auth-success') {
+        // Close the popup
+        if (authWindow) authWindow.close();
+        
+        // Update state and show success message
+        setGoogleConnected(true);
+        setSnackbar({
+          open: true,
+          message: 'Successfully connected to Google Calendar!',
+          severity: 'success'
+        });
+        
+        // Open import modal after successful connection
+        handleOpenImportModal();
+      }
+    }, { once: true });
+  };
+
+  // Function to sync with Google Calendar
+  const handleSyncWithGoogleCalendar = async () => {
+    try {
+      setSyncInProgress(true);
+      
+      // Mock API call - replace with actual API call
+      console.log('Syncing with Google Calendar with settings:', importSettings);
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Close the modal and show success message
+      setOpenImportModal(false);
+      setSyncInProgress(false);
+      setSnackbar({
+        open: true,
+        message: 'Successfully synced with Google Calendar!',
+        severity: 'success'
+      });
+      
+      // Refresh the availability data
+      fetchAuthenticatedAvailability();
+    } catch (error) {
+      console.error('Error syncing with Google Calendar:', error);
+      setSyncInProgress(false);
+      setSnackbar({
+        open: true,
+        message: 'Failed to sync with Google Calendar.',
+        severity: 'error'
+      });
+    }
   };
 
   // Function to create a new availability slot
@@ -251,32 +340,54 @@ const AvailabilitySection = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const drawerWidth= 240;
+  const drawerWidth = 240;
   // Availability section content
   return (
-    <Grid item xs={6}>
+    <Grid item xs={12} md={6}>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
             Available Time Slots
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<CalendarMonthOutlined />}
-            onClick={handleOpenCreateModal}
-            sx={{
-              borderColor: 'primary.main',
-              color: 'primary.main',
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-              }
-            }}
-          >
-            Add New Slot
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Tooltip title={googleConnected ? "Sync with Google Calendar" : "Connect Google Calendar"}>
+              <Button
+                variant="outlined"
+                startIcon={googleConnected ? <SyncIcon /> : <GoogleIcon />}
+                onClick={googleConnected ? handleOpenImportModal : handleGoogleCalendarConnect}
+                sx={{
+                  borderColor: googleConnected ? 'success.main' : 'primary.main',
+                  color: googleConnected ? 'success.main' : 'primary.main',
+                  '&:hover': {
+                    backgroundColor: googleConnected ? 'rgba(46, 125, 50, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: googleConnected ? 'success.dark' : 'primary.dark',
+                  }
+                }}
+              >
+                {googleConnected ? "Sync Calendar" : "Connect Google"}
+              </Button>
+            </Tooltip>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenCreateModal}
+              sx={{
+                bgcolor: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                }
+              }}
+            >
+              Add Slot
+            </Button>
+          </Box>
         </Box>
 
-        {loading && <CircularProgress />}
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        )}
         {error && <Typography color="error">{error}</Typography>}
 
         {!loading && !error && slots && slots.length > 0 ? (
@@ -289,26 +400,27 @@ const AvailabilitySection = () => {
                   maxWidth: 150,
                   boxShadow: 2,
                   border: "1px solid",
-                  borderColor: "primary.light",
+                  borderColor: slot.isAvailable ? "primary.light" : "grey.300",
                   borderRadius: 2,
                   transition: "transform 0.2s, box-shadow 0.2s",
                   cursor: "pointer",
                   "&:hover": { 
                     transform: "translateY(-3px)",
                     boxShadow: 4,
-                    borderColor: "primary.main"
+                    borderColor: slot.isAvailable ? "primary.main" : "grey.400"
                   },
-                  position: "relative"
+                  position: "relative",
+                  opacity: slot.isAvailable ? 1 : 0.75
                 }}
                 onClick={() => handleOpenUpdateModal(slot)}
               >
                 <CardContent sx={{ textAlign: "center", p: 1.5, "&:last-child": { pb: 1.5 } }}>
                   <Box sx={{ 
-                    backgroundColor: "primary.light", 
+                    backgroundColor: slot.isAvailable ? "primary.light" : "grey.200", 
                     py: 0.5, 
                     borderRadius: 1,
                     mb: 1.5,
-                    color: "primary.dark"
+                    color: slot.isAvailable ? "primary.dark" : "text.secondary"
                   }}>
                     <Typography variant="body2" fontWeight="bold">
                       {dayjs(slot.startDateTime).format("MMM D, YYYY")}
@@ -385,21 +497,38 @@ const AvailabilitySection = () => {
           </Box>
         ) : (
           !loading && !error && 
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 4 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>No available slots found.</Typography>
-            <Button 
-              variant="contained" 
-              startIcon={<AddIcon />}
-              onClick={handleOpenCreateModal}
-              sx={{
-                bgcolor: 'primary.main',
-                '&:hover': {
-                  bgcolor: 'primary.dark',
-                }
-              }}
-            >
-              Create Your First Slot
-            </Button>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 4, bgcolor: "grey.50", borderRadius: 2, border: "1px dashed", borderColor: "grey.300" }}>
+            <CalendarMonthOutlined sx={{ fontSize: 40, color: "grey.500", mb: 2 }} />
+            <Typography variant="body1" sx={{ mb: 2, color: "text.secondary" }}>No available slots found.</Typography>
+            <Stack direction="row" spacing={2}>
+              <Button 
+                variant="outlined" 
+                startIcon={<GoogleIcon />}
+                onClick={handleGoogleCalendarConnect}
+                sx={{
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  }
+                }}
+              >
+                Import from Google
+              </Button>
+              <Button 
+                variant="contained" 
+                startIcon={<AddIcon />}
+                onClick={handleOpenCreateModal}
+                sx={{
+                  bgcolor: 'primary.main',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  }
+                }}
+              >
+                Create Your First Slot
+              </Button>
+            </Stack>
           </Box>
         )}
 
@@ -583,6 +712,9 @@ const AvailabilitySection = () => {
                 <Typography variant="body2">
                   <strong>Time:</strong> {dayjs(selectedSlot.startDateTime).format("HH:mm")} - {dayjs(selectedSlot.endDateTime).format("HH:mm")}
                 </Typography>
+                <Typography variant="body2">
+                  <strong>Status:</strong> {selectedSlot.isAvailable ? "Available" : "Unavailable"}
+                </Typography>
               </Box>
             )}
           </DialogContent>
@@ -592,6 +724,85 @@ const AvailabilitySection = () => {
             </Button>
             <Button onClick={handleDeleteSlot} variant="contained" color="error">
               Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Google Calendar Import Modal */}
+        <Dialog open={openImportModal} onClose={() => setOpenImportModal(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              Import from Google Calendar
+              <IconButton onClick={() => setOpenImportModal(false)} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+              <GoogleIcon color="primary" sx={{ mr: 1 }} />
+              <Typography variant="body1" sx={{ color: 'success.main', fontWeight: 'medium' }}>
+                Google Calendar Connected
+              </Typography>
+            </Box>
+            
+            <Typography variant="body2" paragraph sx={{ mb: 3 }}>
+              Select a date range to import your Google Calendar events. Your busy times can be automatically marked as unavailable slots.
+            </Typography>
+            
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <DatePicker
+                  label="Start Date"
+                  value={importSettings.startDate}
+                  onChange={(newValue) => handleImportSettingChange('startDate', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  sx={{ width: '50%' }}
+                />
+                <DatePicker
+                  label="End Date"
+                  value={importSettings.endDate}
+                  onChange={(newValue) => handleImportSettingChange('endDate', newValue)}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  sx={{ width: '50%' }}
+                />
+              </Box>
+            </LocalizationProvider>
+            
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={importSettings.excludeWeekends}
+                  onChange={(e) => handleImportSettingChange('excludeWeekends', e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Exclude weekends"
+            />
+            
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={importSettings.importBusyAsUnavailable}
+                  onChange={(e) => handleImportSettingChange('importBusyAsUnavailable', e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Mark busy times as unavailable"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenImportModal(false)} color="inherit">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSyncWithGoogleCalendar} 
+              variant="contained" 
+              color="primary"
+              disabled={syncInProgress}
+              startIcon={syncInProgress ? <CircularProgress size={20} color="inherit" /> : <SyncIcon />}
+            >
+              {syncInProgress ? "Syncing..." : "Sync Calendar"}
             </Button>
           </DialogActions>
         </Dialog>

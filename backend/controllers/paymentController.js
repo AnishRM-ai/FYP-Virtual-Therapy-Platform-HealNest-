@@ -64,7 +64,7 @@ const paymentController = {
     verifyPayment: async (req, res) => {
         try{
             const {pidx} = req.body;
-            if(!pidx) return res.status({success: false, message:
+            if(!pidx) return res.status(400).json({success: false, message:
                 'pidx is required'
             }) ;
 
@@ -78,10 +78,24 @@ const paymentController = {
                     },
                 }
             );
+
+            const paymentDetails = response.data;
+            //update payment status.
+            const payment = await Payment.findOneAndUpdate(
+                {
+                    transactionId: pidx
+                },
+                {
+                    status: paymentDetails.status === 'paid' ? 'paid' : 'failed',
+                    providerResponse: paymentDetails,
+                },
+                {new: true}
+            );
+
             res.json({
                 success: true,
-                data: response.data,
-                message: 'Payment verified successfully'
+                message: 'Payment verified successfully',
+                data: paymentDetails
             });
         } catch(error){
             console.error('Error verifying payment:', error.response?.data || error.message);

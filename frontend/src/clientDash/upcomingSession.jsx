@@ -20,7 +20,8 @@ import {
   Snackbar,
   Avatar,
   Alert,
-  Rating
+  Rating,
+  Link
 } from '@mui/material';
 import {
   CancelOutlined,
@@ -30,7 +31,9 @@ import {
   EventNoteOutlined,
   FeedbackOutlined,
   StarOutline,
-  Star
+  Star,
+  VideocamOutlined,
+  ContentCopyOutlined
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -61,6 +64,9 @@ export default function PatientSessionsManagement() {
   // Feedback states
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState('');
+
+  // Link copied state
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -178,6 +184,34 @@ export default function PatientSessionsManagement() {
     return session.status === 'completed';
   };
 
+  // Handle copying meeting link
+  const copyMeetingLink = (meetingLink) => {
+    if (meetingLink) {
+      navigator.clipboard.writeText(meetingLink)
+        .then(() => {
+          setLinkCopied(true);
+          setAlertMessage('Meeting link copied to clipboard');
+          setAlertSeverity('success');
+          setAlertOpen(true);
+          setTimeout(() => setLinkCopied(false), 3000);
+        })
+        .catch(err => {
+          setAlertMessage('Failed to copy link');
+          setAlertSeverity('error');
+          setAlertOpen(true);
+        });
+    }
+  };
+
+  // Check if session should show meeting link (only upcoming and not cancelled)
+  const shouldShowMeetingLink = (session) => {
+    if (session.status === 'cancelled') return false;
+    const sessionTime = dayjs(session.scheduledTime);
+    const now = dayjs();
+    // Show link if session is today or in the future
+    return sessionTime.isAfter(now.subtract(1, 'day'));
+  };
+
   return (
     <Layout
       drawerWidth={drawerWidth}
@@ -280,6 +314,29 @@ export default function PatientSessionsManagement() {
                               {dayjs(session.scheduledTime).format('YYYY-MM-DD h:mm A')}
                             </Typography>
                           </Box>
+                          
+                          {/* Meeting Link Display in List View */}
+                          {shouldShowMeetingLink(session) && session.meetingLink && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                              <VideocamOutlined sx={{ fontSize: 16, mr: 0.5, color: '#1976d2' }} />
+                              <Typography 
+                                variant="body2" 
+                                color="primary"
+                                sx={{ 
+                                  textDecoration: 'underline', 
+                                  cursor: 'pointer',
+                                  '&:hover': { color: '#1565c0' }
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(session.meetingLink, '_blank');
+                                }}
+                              >
+                                Join Meeting
+                              </Typography>
+                            </Box>
+                          )}
+                          
                           {session.status === 'cancelled' && (
                             <>
                               <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
@@ -414,6 +471,74 @@ export default function PatientSessionsManagement() {
                   Duration: {selectedSession.duration || 60} minutes
                 </Typography>
               </Box>
+
+              {/* Meeting Link in Detail View */}
+              {shouldShowMeetingLink(selectedSession) && selectedSession.meetingLink && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                    Video Meeting
+                  </Typography>
+                  
+                  <Box sx={{ 
+                    p: 2, 
+                    bgcolor: '#e3f2fd', 
+                    borderRadius: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <VideocamOutlined sx={{ fontSize: 20, mr: 1, color: '#1976d2' }} />
+                      <Typography variant="body2">
+                        Join your session using the link below:
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      bgcolor: 'white',
+                      borderRadius: 1,
+                      p: 1,
+                      mt: 1
+                    }}>
+                      <Link
+                        href={selectedSession.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          maxWidth: '80%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {selectedSession.meetingLink}
+                      </Link>
+                      <IconButton
+                        size="small"
+                        onClick={() => copyMeetingLink(selectedSession.meetingLink)}
+                        title="Copy meeting link"
+                      >
+                        <ContentCopyOutlined fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      disableElevation
+                      startIcon={<VideocamOutlined />}
+                      sx={{ mt: 1 }}
+                      onClick={() => window.open(selectedSession.meetingLink, '_blank')}
+                    >
+                      Join Meeting
+                    </Button>
+                  </Box>
+                </>
+              )}
 
               <Box sx={{ mt: 1 }}>
                 <Typography variant="body2" color="text.secondary">

@@ -212,67 +212,85 @@ const MentalHealthBookingSystem = () => {
     }
   };
   
-  const startCheckingPaymentStatus = (pidx) => {
-    checkPaymentStatus(pidx);
-    
-    const intervalId = setInterval(() => {
-      checkPaymentStatus(pidx);
-    }, 5000);
-    
-    setPaymentStatusInterval(intervalId);
-    
-    toast.success('Payment initiated! We will check the status automatically.', {
-      duration: 5000
-    });
-  };
+ // Simplified interval function that directly calls verifyAndCompleteBooking
+ const startCheckingPaymentStatus = (pidx) => {
+  // Clear any existing interval
+  if (paymentStatusInterval) {
+    clearInterval(paymentStatusInterval);
+  }
   
-  const checkPaymentStatus = async (pidx) => {
-    if (!pidx) return;
-    
+  // Create a new interval to check payment status every 5 seconds
+  const intervalId = setInterval(() => {
     setCheckingPaymentStatus(true);
-    
-    try {
-      const response = await axios.get(`http://localhost:5555/payment/check/${pidx}`);
-      
-      if (response.data.success) {
-        if (response.data.status === 'Completed' || response.data.status === 'completed') {
-          if (paymentStatusInterval) {
-            clearInterval(paymentStatusInterval);
-            setPaymentStatusInterval(null);
-          }
-          
-          setPaymentSuccess(true);
-          setPaymentData(response.data.details);
-          await verifyAndCompleteBooking(pidx);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking payment status:', error);
-    } finally {
-      setCheckingPaymentStatus(false);
-    }
-  };
-  
-  const verifyAndCompleteBooking = async (pidx) => {
-    setBooking(true);
-    
-    try {
-      const verificationResponse = await axios.post('http://localhost:5555/payment/verify', {
-        pidx
+    verifyAndCompleteBooking(pidx)
+      .then(() => {
+        // If verification successful, the booking process will be completed
+        // and intervals will be cleared in verifyAndCompleteBooking
+      })
+      .catch(error => {
+        console.error('Error verifying payment:', error);
+      })
+      .finally(() => {
+        setCheckingPaymentStatus(false);
       });
-      
-      if (verificationResponse.data.success) {
-        await completeBookingAfterPayment(pidx);
-      } else {
-        toast.error('Payment verification failed. Please contact support.');
+  }, 5000);
+  
+  // Save the interval ID for cleanup
+  setPaymentStatusInterval(intervalId);
+  
+  toast.success('Payment initiated! We will check the status automatically.', {
+    duration: 5000
+  });
+};
+
+// Add a manual check function for the "Check Status" button
+const manualCheckPaymentStatus = () => {
+  if (!paymentPidx) return;
+  
+  setCheckingPaymentStatus(true);
+  verifyAndCompleteBooking(paymentPidx)
+    .finally(() => {
+      setCheckingPaymentStatus(false);
+    });
+};
+
+// Modified to handle intervals
+const verifyAndCompleteBooking = async (pidx) => {
+  if(booking || bookingSuccess) return false;
+
+  setBooking(true);
+
+  try {
+    const verificationResponse = await axios.post('http://localhost:5555/payment/verify', {
+      pidx
+    });
+
+    if (verificationResponse.data.success) {
+      // Clear the check interval if payment is successful
+      if (paymentStatusInterval) {
+        clearInterval(paymentStatusInterval);
+        setPaymentStatusInterval(null);
       }
-    } catch (error) {
-      console.error('Error verifying payment:', error);
-      toast.error('Payment verification failed. Please contact support.');
-    } finally {
-      setBooking(false);
+      
+      setPaymentSuccess(true);
+      setPaymentData(verificationResponse.data.data);
+
+      if(!bookingSuccess){
+      await completeBookingAfterPayment(pidx);
+      }
+      return true;
+    } else {
+      toast.info('Payment still in progress. Please wait...');
+      return false;
     }
-  };
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    toast.error('Payment verification failed. Please contact support.');
+    return false;
+  } finally {
+    setBooking(false);
+  }
+};
 
   const completeBookingAfterPayment = async (pidx) => {
     const bookingData = {
@@ -296,16 +314,17 @@ const MentalHealthBookingSystem = () => {
         const availabilityResponse = await updateAvailability(selectedTime, id);
 
         if (availabilityResponse && availabilityResponse.success === false) {
-          toast.error('Session booked but failed to update availability. Please contact support.');
+          toast.error('Session booked but failed to update availability.');
         } else {
           setAvailableSlots(prevSlots =>
             prevSlots.filter(slot => slot.startDateTime !== selectedTime)
           );
+          fetchAvailability(id);
         }
 
         setBookingSuccess(true);
         setMeetingLink(response.data.session.meetingLink);
-        fetchAvailability(id);
+        
       }
     } catch (error) {
       console.error('Error booking session:', error);
