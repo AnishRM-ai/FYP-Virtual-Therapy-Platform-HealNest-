@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Container, 
   Box, 
@@ -20,16 +20,30 @@ import {
   Chip,
   OutlinedInput
 } from '@mui/material';
-import { Save, PhotoCamera, Visibility, VisibilityOff, Add } from '@mui/icons-material';
+import { Save, PhotoCamera, Visibility, VisibilityOff } from '@mui/icons-material';
+import useProfileStore from '../store/profileUpdateStore.js'; 
+import NavBar from '../components/homenav.jsx';
 
 const ProfileEditPage = () => {
-  // User data state
-  const [userData, setUserData] = useState({
+  // Get state and actions from the Zustand store
+  const { 
+    profile,
+    isLoading,
+    error: storeError,
+    avatarUrl,
+    fetchProfile,
+    updateProfile,
+    changePassword,
+    uploadAvatar,
+    clearError
+  } = useProfileStore();
+
+  // Local state for form values
+  const [formData, setFormData] = useState({
     fullname: '',
     email: '',
     gender: '',
     bio: '',
-    avatar: '',
     specializations: [],
   });
 
@@ -49,12 +63,12 @@ const ProfileEditPage = () => {
   });
 
   // UI state
-  const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
+  
   const [showPassword, setShowPassword] = useState({
     currentPassword: false,
     newPassword: false,
@@ -64,42 +78,41 @@ const ProfileEditPage = () => {
   // Form validation
   const [errors, setErrors] = useState({});
 
-  // Fetch user data from backend
+  // Fetch user data from backend via Zustand store
   useEffect(() => {
-    const fetchUserData = async () => {
-      setLoading(true);
-      try {
-        // Mocked data - in a real app, this would be an API call
-        setTimeout(() => {
-          setUserData({
-            fullname: 'John Doe',
-            email: 'john.doe@example.com',
-            gender: 'male',
-            bio: 'I am a software developer with a passion for React and UX design.',
-            avatar: '/api/placeholder/150/150',
-            specializations: ['Anxiety', 'Depression', 'Stress Management'],
-          });
-          setLoading(false);
-        }, 500);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setNotification({
-          open: true,
-          message: 'Failed to load user data',
-          severity: 'error'
-        });
-        setLoading(false);
-      }
-    };
+    fetchProfile();
+  }, [fetchProfile]);
 
-    fetchUserData();
-  }, []);
+  // Update local form data when profile data is loaded
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        fullname: profile.fullname || '',
+        email: profile.email || '',
+        gender: profile.gender || '',
+        bio: profile.bio || '',
+        specializations: profile.specializations || [],
+      });
+    }
+  }, [profile]);
+
+  // Show error notification when store has error
+  useEffect(() => {
+    if (storeError) {
+      setNotification({
+        open: true,
+        message: storeError,
+        severity: 'error'
+      });
+      clearError();
+    }
+  }, [storeError, clearError]);
 
   // Handle input changes for profile info
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
-    setUserData({
-      ...userData,
+    setFormData({
+      ...formData,
       [name]: value
     });
   };
@@ -111,8 +124,8 @@ const ProfileEditPage = () => {
     } = event;
     // On autofill we get a stringified value.
     const specializations = typeof value === 'string' ? value.split(',') : value;
-    setUserData({
-      ...userData,
+    setFormData({
+      ...formData,
       specializations: specializations
     });
   };
@@ -135,19 +148,23 @@ const ProfileEditPage = () => {
   };
 
   // Handle avatar upload
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // In a real app, you would upload this to a server
-      // For now, just create a local URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUserData({
-          ...userData,
-          avatar: e.target.result
+      try {
+        await uploadAvatar(file);
+        setNotification({
+          open: true,
+          message: 'Avatar updated successfully',
+          severity: 'success'
         });
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        setNotification({
+          open: true,
+          message: 'Failed to upload avatar',
+          severity: 'error'
+        });
+      }
     }
   };
 
@@ -157,14 +174,14 @@ const ProfileEditPage = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
     // Validate email
-    if (!userData.email) {
+    if (!formData.email) {
       newErrors.email = 'Email is required';
-    } else if (!emailRegex.test(userData.email)) {
+    } else if (!emailRegex.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
     
     // Validate fullname
-    if (!userData.fullname) {
+    if (!formData.fullname) {
       newErrors.fullname = 'Full name is required';
     }
     
@@ -199,36 +216,35 @@ const ProfileEditPage = () => {
       return;
     }
     
-    setLoading(true);
-    
     try {
-      // Mocked API call - in a real app, this would send data to your backend
-      setTimeout(() => {
-        setNotification({
-          open: true,
-          message: 'Profile updated successfully',
-          severity: 'success'
+      // Update profile information
+      await updateProfile(formData);
+      
+      // Change password if provided
+      if (passwords.currentPassword && passwords.newPassword) {
+        await changePassword({
+          currentPassword: passwords.currentPassword,
+          newPassword: passwords.newPassword
         });
-        
-        // Clear password fields after successful update
-        if (passwords.newPassword) {
-          setPasswords({
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: '',
-          });
-        }
-        
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Error updating profile:', error);
+      }
+      
       setNotification({
         open: true,
-        message: 'Failed to update profile',
-        severity: 'error'
+        message: 'Profile updated successfully',
+        severity: 'success'
       });
-      setLoading(false);
+      
+      // Clear password fields after successful update
+      if (passwords.newPassword) {
+        setPasswords({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      // Error notifications are handled by the useEffect that watches storeError
     }
   };
 
@@ -240,8 +256,16 @@ const ProfileEditPage = () => {
     });
   };
 
+  const drawerWidth=240;
+
   return (
+   <Box sx={{ 
+        minHeight: '100vh' 
+      }}>
+        <NavBar drawerWidth={drawerWidth}/>
     <Container maxWidth="md" sx={{ py: 4 }}>
+       
+      
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom align="center">
           Edit Profile
@@ -251,8 +275,8 @@ const ProfileEditPage = () => {
           {/* Avatar Section */}
           <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
             <Avatar
-              src={userData.avatar || '/api/placeholder/150/150'}
-              alt={userData.fullname}
+              src={avatarUrl || '/api/placeholder/150/150'}
+              alt={formData.fullname}
               sx={{ width: 150, height: 150, mb: 2 }}
             />
             <Button
@@ -283,7 +307,7 @@ const ProfileEditPage = () => {
               <TextField
                 name="fullname"
                 label="Full Name"
-                value={userData.fullname}
+                value={formData.fullname}
                 onChange={handleProfileChange}
                 fullWidth
                 error={!!errors.fullname}
@@ -295,7 +319,7 @@ const ProfileEditPage = () => {
                 name="email"
                 label="Email"
                 type="email"
-                value={userData.email}
+                value={formData.email}
                 onChange={handleProfileChange}
                 fullWidth
                 error={!!errors.email}
@@ -308,7 +332,7 @@ const ProfileEditPage = () => {
                 <Select
                   labelId="gender-label"
                   name="gender"
-                  value={userData.gender}
+                  value={formData.gender}
                   label="Gender"
                   onChange={handleProfileChange}
                 >
@@ -326,7 +350,7 @@ const ProfileEditPage = () => {
                   labelId="specializations-label"
                   id="specializations"
                   multiple
-                  value={userData.specializations}
+                  value={formData.specializations}
                   onChange={handleSpecializationsChange}
                   input={<OutlinedInput id="select-multiple-chip" label="Specializations" />}
                   renderValue={(selected) => (
@@ -362,7 +386,7 @@ const ProfileEditPage = () => {
                 label="Bio"
                 multiline
                 rows={4}
-                value={userData.bio}
+                value={formData.bio}
                 onChange={handleProfileChange}
                 fullWidth
                 placeholder="Tell us about yourself..."
@@ -459,10 +483,10 @@ const ProfileEditPage = () => {
               variant="contained"
               color="primary"
               size="large"
-              disabled={loading}
+              disabled={isLoading}
               startIcon={<Save />}
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {isLoading ? 'Saving...' : 'Save Changes'}
             </Button>
           </Box>
         </Box>
@@ -484,6 +508,8 @@ const ProfileEditPage = () => {
         </Alert>
       </Snackbar>
     </Container>
+    </Box>
+   
   );
 };
 

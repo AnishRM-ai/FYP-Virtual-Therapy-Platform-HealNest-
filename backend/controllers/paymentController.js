@@ -86,7 +86,7 @@ const paymentController = {
                     transactionId: pidx
                 },
                 {
-                    status: paymentDetails.status === 'paid' ? 'paid' : 'failed',
+                    status: paymentDetails.status === 'Completed' ? 'paid' : 'failed',
                     providerResponse: paymentDetails,
                 },
                 {new: true}

@@ -20,7 +20,7 @@ const getOAuth2Client = async (userId) => {
     oauth2Client.setCredentials({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
-        expiry_date: tokenData.expiry_date
+        expiry_date: tokenData.expiry_date,
     });
 
     //Check if the access token is expired
@@ -28,7 +28,7 @@ const getOAuth2Client = async (userId) => {
     if(new Date(tokenData.expiry_date).getTime() < now) {
         console.log('Access token is expired, Refreshing...');
         try{
-            const {credentials} = await oauth2Client.getAccessToken();
+            const {credentials} = await oauth2Client.refreshAccessToken();
             //update the token in db
             tokenData.access_token = credentials.access_token;
             tokenData.expiry_date = credentials.expiry_date;

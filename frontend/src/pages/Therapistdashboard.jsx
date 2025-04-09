@@ -67,17 +67,20 @@ export default function HealNestDashboard() {
 
   // Filter sessions to show only scheduled sessions
   const scheduledSessions = sessions.filter(session => session.status === 'scheduled');
+  const completedsession = sessions.filter(session => session.status === 'completed' );
 
+  const uniqueClientIds = [...new Set(sessions.map(session => session.clientId._id))];
+const totalPatients = uniqueClientIds.length;
   // Sort feedbacks by most recent
   const recentFeedbacks = [...feedbacks]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 3); // Display only the 3 most recent feedbacks
 
-  // Sample statistics data (you can replace these with dynamic values)
+ 
   const stats = {
     upcomingSessions: scheduledSessions.length,
-    completedSessions: 124,
-    totalPatients: 45,
+    completedSessions: completedsession.length,
+    totalPatients: totalPatients,
     averageRating: feedbacks.length > 0 
       ? (feedbacks.reduce((sum, feedback) => sum + feedback.rating, 0) / feedbacks.length).toFixed(1)
       : 0

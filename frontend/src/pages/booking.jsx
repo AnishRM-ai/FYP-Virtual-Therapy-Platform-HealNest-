@@ -223,9 +223,11 @@ const MentalHealthBookingSystem = () => {
   const intervalId = setInterval(() => {
     setCheckingPaymentStatus(true);
     verifyAndCompleteBooking(pidx)
-      .then(() => {
-        // If verification successful, the booking process will be completed
-        // and intervals will be cleared in verifyAndCompleteBooking
+      .then((success) => {
+        if(success){
+          clearInterval(intervalId);
+          setPaymentStatusInterval(null);
+        }
       })
       .catch(error => {
         console.error('Error verifying payment:', error);
@@ -243,12 +245,18 @@ const MentalHealthBookingSystem = () => {
   });
 };
 
-// Add a manual check function for the "Check Status" button
 const manualCheckPaymentStatus = () => {
   if (!paymentPidx) return;
   
   setCheckingPaymentStatus(true);
   verifyAndCompleteBooking(paymentPidx)
+    .then((success) => {
+      // If successful, make sure we update UI appropriately
+      if (success && paymentStatusInterval) {
+        clearInterval(paymentStatusInterval);
+        setPaymentStatusInterval(null);
+      }
+    })
     .finally(() => {
       setCheckingPaymentStatus(false);
     });
@@ -256,7 +264,7 @@ const manualCheckPaymentStatus = () => {
 
 // Modified to handle intervals
 const verifyAndCompleteBooking = async (pidx) => {
-  if(booking || bookingSuccess) return false;
+  if(booking || bookingSuccess || paymentSuccess) return false;
 
   setBooking(true);
 
@@ -308,24 +316,16 @@ const verifyAndCompleteBooking = async (pidx) => {
     };
 
     try {
+      setBookingSuccess(true);
       const response = await axios.post(`http://localhost:5555/session/create`, bookingData);
 
       if (response.data.success) {
-        const availabilityResponse = await updateAvailability(selectedTime, id);
-
-        if (availabilityResponse && availabilityResponse.success === false) {
-          toast.error('Session booked but failed to update availability.');
-        } else {
-          setAvailableSlots(prevSlots =>
-            prevSlots.filter(slot => slot.startDateTime !== selectedTime)
-          );
-          fetchAvailability(id);
-        }
-
-        setBookingSuccess(true);
-        setMeetingLink(response.data.session.meetingLink);
-        
+        const isoFormattedTime = new Date(selectedTime).toISOString();
+        const availabilityResponse = await updateAvailability(isoFormattedTime, id); 
       }
+
+      
+      setMeetingLink(response.data.session.meetingLink);
     } catch (error) {
       console.error('Error booking session:', error);
       toast.error('Session booking failed after payment. Please contact support.');
@@ -477,7 +477,6 @@ const verifyAndCompleteBooking = async (pidx) => {
           <Button
             variant="contained"
             href="/client-dashboard"
-            target="_blank"
             sx={{
               backgroundColor: colors.primary,
               '&:hover': { backgroundColor: '#3a5a80' },
@@ -540,7 +539,7 @@ const verifyAndCompleteBooking = async (pidx) => {
                     fontSize: '3rem'
                   }}
                 >
-                  {therapist.fullname?.charAt(0)}
+                  {therapist.avatar}
                 </Avatar>
                 <Box>
                   <Typography variant="h4" sx={{ 

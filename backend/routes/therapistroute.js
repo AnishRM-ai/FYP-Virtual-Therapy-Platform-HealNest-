@@ -8,7 +8,7 @@ router.get('/therapist/availability', verifyToken, getAuthenticatedTherapistAvai
 router.put('/therapist/createAvailability', verifyToken, addorupdateAvailability );
 router.delete('/therapist/delete/slot', verifyToken, deleteAvailability);
 router.get('/therapist/:id', getTherapistById);
-router.put('/updateAvailability', verifyToken, updateAvailabilityAfterBooking)
+router.put('/updateAvailability', updateAvailabilityAfterBooking)
 router.get('/therapist/:id/slots', getTherapistAvailability);
 
 
