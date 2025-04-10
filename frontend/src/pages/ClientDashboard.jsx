@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -24,11 +24,16 @@ import {
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
 import useClientSessionStore from '../store/clientStore';
+import useJournalStore from '../store/journalStore.js';
+import useMoodStore from '../store/moodStore.js'; // Import the mood store
 import DashboardLayout from '../clientDash/layout';
 import TopBar from '../clientDash/topbar';
+import MoodTimeline from '../clientDash/moodVisulization'; 
 
 const Dashboard = () => {
-  const { client, sessions=[], loading, error, fetchSessions, fetchAuthenticatedClient } = useClientSessionStore();
+  const { client, sessions = [], loading: sessionLoading, error: sessionError, fetchSessions, fetchAuthenticatedClient } = useClientSessionStore();
+  const { journals, isLoading: journalLoading, error: journalError, fetchJournals } = useJournalStore();
+  const { moodTracker, loading: moodLoading, error: moodError, fetchMoods } = useMoodStore(); // Use the mood store
 
   useEffect(() => {
     fetchAuthenticatedClient();
@@ -37,28 +42,133 @@ const Dashboard = () => {
   useEffect(() => {
     if (client?._id) {
       fetchSessions(client._id);
+      fetchJournals(); // Fetch all journals when client is loaded
+      fetchMoods(); // Fetch mood data when client is loaded
     }
-  }, [client, fetchSessions]);
+  }, [client, fetchSessions, fetchJournals, fetchMoods]);
 
- 
+  // Calculate streak based on journal entries and get recent journals
+  const { currentStreak, recentJournals } = useMemo(() => {
+    if (!journals.length) return { currentStreak: 0, recentJournals: [] };
+
+    // Sort journals by date (newest first)
+    const sortedJournals = [...journals].sort((a, b) => 
+      new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date)
+    );
+
+    // Get the 3 most recent journals for display
+    const recentJournals = sortedJournals.slice(0, 3);
+
+    // Calculate streak
+    let streak = 0;
+    let currentDate = dayjs();
+    const journalDates = new Set(
+      sortedJournals.map(journal => 
+        dayjs(journal.createdAt || journal.date).format('YYYY-MM-DD')
+      )
+    );
+
+    // Check yesterday first to see if the streak is active
+    const yesterday = currentDate.subtract(1, 'day').format('YYYY-MM-DD');
+    const hasEntryYesterday = journalDates.has(yesterday);
+    
+    // If no entry yesterday, check if there's an entry today to start a new streak
+    const today = currentDate.format('YYYY-MM-DD');
+    const hasEntryToday = journalDates.has(today);
+    
+    if (!hasEntryYesterday && !hasEntryToday) {
+      return { currentStreak: 0, recentJournals };
+    }
+    
+    // If there's an entry today, count it in the streak
+    if (hasEntryToday) {
+      streak = 1;
+      currentDate = currentDate.subtract(1, 'day');
+    }
+    
+    // Count consecutive days backwards
+    let checkDate = currentDate;
+    let daysBack = hasEntryToday ? 1 : 0; // Start from yesterday if entry today exists
+    
+    while (true) {
+      const dateString = checkDate.format('YYYY-MM-DD');
+      if (journalDates.has(dateString)) {
+        streak++;
+        checkDate = checkDate.subtract(1, 'day');
+      } else {
+        break;
+      }
+    }
+
+    return { currentStreak: streak, recentJournals };
+  }, [journals]);
+
+  // Get current mood from the most recent mood entry
+  const currentMood = useMemo(() => {
+    if (!moodTracker || moodTracker.length === 0) return { text: 'Neutral', value: 3 };
+
+    // Sort mood entries by timestamp (newest first)
+    const sortedMoods = [...moodTracker].sort((a, b) => 
+      new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
+    // Get the most recent mood
+    const latestMood = sortedMoods[0].mood;
+    let moodText = 'Neutral';
+    
+    switch (Number(latestMood)) {
+      case 1: moodText = 'Very Negative'; break;
+      case 2: moodText = 'Negative'; break;
+      case 3: moodText = 'Neutral'; break;
+      case 4: moodText = 'Positive'; break;
+      case 5: moodText = 'Very Positive'; break;
+      default: moodText = 'Neutral';
+    }
+
+    return { text: moodText, value: Number(latestMood) };
+  }, [moodTracker]);
+
+  // Format journals for display
+  const formattedRecentJournals = recentJournals.map(journal => ({
+    title: journal.title || 'Journal Entry',
+    date: dayjs(journal.createdAt || journal.date).format('MMM D, YYYY'),
+    content: journal.content?.substring(0, 80) + '...' || 'No content'
+  }));
+
+  // Determine mood color for display
+  const getMoodColor = (mood) => {
+    switch (mood) {
+      case 'Very Negative': return '#D32F2F';
+      case 'Negative': return '#F57C00';
+      case 'Neutral': return '#FFC107';
+      case 'Positive': return '#4CAF50';
+      case 'Very Positive': return '#2196F3';
+      default: return '#9E9E9E';
+    }
+  };
 
   const statsData = [
-    { title: 'Current Mood', value: 'Positive', icon: <MoodIcon />, color: '#4CAF50' },
-    { title: 'Journal Entries', value: '28', icon: <TimerIcon /> },
-    { title: 'Sessions Complete', value: '12', icon: <CompletedIcon /> },
-    { title: 'Streak', value: '7 days', icon: <StreakIcon />, color: '#FF9800' }
-  ];
-
-  const journalEntries = [
-    {
-      title: 'Morning Reflection',
-      date: 'Jan 10, 2025',
-      content: 'Today I practiced meditation and felt more centered...'
+    { 
+      title: 'Current Mood', 
+      value: currentMood.text, 
+      icon: <MoodIcon />, 
+      color: getMoodColor(currentMood.text) 
     },
-    {
-      title: 'Evening Thoughts',
-      date: 'Jan 9, 2025',
-      content: 'Reflecting on today\'s challenges and victories...'
+    { 
+      title: 'Journal Entries', 
+      value: journals.length.toString(), 
+      icon: <JournalIcon /> 
+    },
+    { 
+      title: 'Sessions Complete', 
+      value: sessions.filter(s => s.status === 'completed').length.toString(), 
+      icon: <CompletedIcon /> 
+    },
+    { 
+      title: 'Streak', 
+      value: `${currentStreak} days`, 
+      icon: <StreakIcon />, 
+      color: '#FF9800' 
     }
   ];
 
@@ -68,6 +178,9 @@ const Dashboard = () => {
   ];
 
   const drawerWidth = 240;
+
+  const isLoading = sessionLoading || journalLoading || moodLoading;
+  const error = sessionError || journalError || moodError;
 
   return (
     <DashboardLayout>
@@ -110,11 +223,12 @@ const Dashboard = () => {
             <Card sx={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Mood Timeline</Typography>
-                <Box sx={{ height: 200, bgcolor: '#f5f5f5', borderRadius: 1, p: 2 }}>
-                  <Typography variant="body2" color="text.secondary" align="center">
-                    Mood Graph Visualization
-                  </Typography>
-                </Box>
+                <MoodTimeline 
+                  moodData={moodTracker} 
+                  isLoading={moodLoading} 
+                  error={moodError} 
+                  daysToShow={14} 
+                />
               </CardContent>
             </Card>
 
@@ -122,18 +236,28 @@ const Dashboard = () => {
             <Card sx={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Recent Journal Entries</Typography>
-                {journalEntries.map((entry, index) => (
-                  <Box key={index} sx={{ mb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{entry.title}</Typography>
-                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1 }}>
-                      {entry.date}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {entry.content}
-                    </Typography>
-                    {index < journalEntries.length - 1 && <Divider sx={{ mt: 2 }} />}
-                  </Box>
-                ))}
+                {journalLoading ? (
+                  <CircularProgress size={24} />
+                ) : journalError ? (
+                  <Typography color="error">{journalError}</Typography>
+                ) : formattedRecentJournals.length > 0 ? (
+                  formattedRecentJournals.map((entry, index) => (
+                    <Box key={index} sx={{ mb: 2 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{entry.title}</Typography>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1 }}>
+                        {entry.date}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {entry.content}
+                      </Typography>
+                      {index < formattedRecentJournals.length - 1 && <Divider sx={{ mt: 2 }} />}
+                    </Box>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No journal entries yet. Start writing today!
+                  </Typography>
+                )}
               </CardContent>
             </Card>
           </Box>
@@ -144,11 +268,11 @@ const Dashboard = () => {
             <Card sx={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Upcoming Sessions</Typography>
-                {loading && <CircularProgress />}
-                {error && <Typography color="error">{error}</Typography>}
-                <Stack>
+                {sessionLoading && <CircularProgress size={24} />}
+                {sessionError && <Typography color="error">{sessionError}</Typography>}
+                <Stack spacing={2}>
                   {sessions
-                    .filter(session => session.status === 'scheduled') // Filter sessions by status
+                    .filter(session => session.status === 'scheduled')
                     .map((session) => (
                       <Box key={session._id} sx={{ display: 'flex', alignItems: 'center' }}>
                         <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
@@ -172,6 +296,11 @@ const Dashboard = () => {
                         </Box>
                       </Box>
                     ))}
+                  {sessions.filter(session => session.status === 'scheduled').length === 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      No upcoming sessions scheduled.
+                    </Typography>
+                  )}
                 </Stack>
               </CardContent>
             </Card>

@@ -304,7 +304,7 @@ const HomePage = () => {
                     easily and start your healing journey.
                   </Typography>
                   <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button variant="contained" color="primary" size="large">
+                    <Button variant="contained" color="primary" size="large" onClick={findTherapist}>
                       Find a Therapist
                     </Button>
                     <Button variant="outlined" color="primary" size="large">

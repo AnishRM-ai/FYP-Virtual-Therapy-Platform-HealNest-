@@ -64,35 +64,35 @@ function MoodTracker() {
 
   const moodOptions = [
     { 
-      value: 'Very Sad', 
+      value: 1, 
       icon: <SentimentVeryDissatisfiedIcon fontSize="large" />, 
       color: '#d32f2f',
       gradient: 'linear-gradient(135deg, #d32f2f 30%, #ff6659 90%)',
       label: 'Very Sad'
     },
     { 
-      value: 'Sad', 
+      value: 2, 
       icon: <SentimentDissatisfiedIcon fontSize="large" />, 
       color: '#f57c00',
       gradient: 'linear-gradient(135deg, #f57c00 30%, #ffad42 90%)',
       label: 'Sad'
     },
     { 
-      value: 'Neutral', 
+      value: 3, 
       icon: <SentimentNeutralIcon fontSize="large" />, 
       color: '#ffd600',
       gradient: 'linear-gradient(135deg, #ffd600 30%, #ffea00 90%)',
       label: 'Neutral'
     },
     { 
-      value: 'Happy', 
+      value: 4, 
       icon: <SentimentSatisfiedAltIcon fontSize="large" />, 
       color: '#4caf50',
       gradient: 'linear-gradient(135deg, #4caf50 30%, #80e27e 90%)',
       label: 'Happy'
     },
     { 
-      value: 'Overjoyed', 
+      value: 5, 
       icon: <SentimentVerySatisfiedIcon fontSize="large" />, 
       color: '#2196f3',
       gradient: 'linear-gradient(135deg, #2196f3 30%, #6ec6ff 90%)',

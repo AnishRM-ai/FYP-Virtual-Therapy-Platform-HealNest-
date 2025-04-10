@@ -72,13 +72,14 @@ const createSession = async (req, res) => {
             conferenceData: {
                 createRequest: { requestId: `${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } }
             },
-            reminders: { useDefault: true }
+            reminders: { useDefault:true  }
         };
 
         const calendarEvent = await calendar.events.insert({
             calendarId: 'primary',
             resource: event,
-            conferenceDataVersion: 1
+            conferenceDataVersion: 1,
+            sendUpdates: 'all'
         });
 
         const meetingLink = calendarEvent.data.hangoutLink;
