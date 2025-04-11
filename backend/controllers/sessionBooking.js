@@ -210,27 +210,6 @@ const cancelSession = async (req, res) => {
     }
 };
 
-const updateTherapistNotes = async (req, res) => {
-    const{sessionId} = req.params;
-    const {therapistNotes} = req.body;
-    const therapistId = req.userId
-    try{
-        const session = await Session.findOneAndUpdate(
-            {_id: sessionId, therapistId},//only assigned therapist can update.
-            {$set: {'notes.therapistNotes': therapistNotes}},
-            {new: true, runValidators: true} // retrun updated documnets and validate input.
-        );
-
-        if(!session) {
-            return res.status(404).json({success: false, message:'sesssion not found.'});
-        }
-
-        res.status(200).json({success: true, message:'Therapist notes updated successfully', session});
-    } catch(error){
-        console.error('Error updating therapist notes: ', error);
-        res.status(500).json({success: false, message:'Internal server error'});
-    }
-};
 
 //delete Sesssion.
 const deleteSession = async (req, res) => {
@@ -339,13 +318,212 @@ const getSessionDetails = async (req, res) => {
     }
 };
 
+//update private notes .
+const updatePrivateNotes = async (req, res) => {
+    const {sessionId} = req.params;
+    const {privateNotes} = req.body;
+    const therapistId = req.userId;
+    try {
+        // Find and update session with validation that the therapist owns this session
+        const session = await Session.findOneAndUpdate(
+            { _id: sessionId, therapistId },
+            { $set: { 'notes.therapistNotes': privateNotes }},
+            { new: true, runValidators: true }
+        );
+
+        if (!session) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Session not found or unauthorized access' 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Private notes updated successfully',
+            session
+        });
+    } catch (error) {
+        console.error('Error updating private notes:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+//Shared notes accessible by both client and therapist.
+const updateSharedNotes = async (req, res) => {
+    const { sessionId } = req.params;
+    const { sharedNotes } = req.body;
+    const therapistId = req.userId;
+    
+    try {
+        const session = await Session.findOneAndUpdate(
+            { _id: sessionId, therapistId },
+            { $set: { 'notes.sharedNotes': sharedNotes }},
+            { new: true, runValidators: true }
+        );
+
+        if (!session) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Session not found or unauthorized access' 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Shared notes updated successfully',
+            session
+        });
+    } catch (error) {
+        console.error('Error updating shared notes:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+//get client session history with the current therapist.
+const getClientSessionsHistory = async (req, res) => {
+    const { clientId } = req.params;
+    const therapistId = req.userId;
+    
+    try {
+        // Validate that clientId is a valid ObjectId
+        if (!clientId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid client ID format' 
+            });
+        }
+
+        // Find all sessions between this therapist and client
+        const sessions = await Session.find({ 
+            therapistId,
+            clientId
+        })
+        .populate('clientId', 'fullname email')
+        .sort({ scheduledTime: -1 }); // Sort by most recent first
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Client session history retrieved successfully',
+            sessions
+        });
+    } catch (error) {
+        console.error('Error fetching client sessions history:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+//get both notes for a session
+const getSessionNotes = async (req, res) => {
+    const { sessionId } = req.params;
+    const therapistId = req.userId;
+    
+    try {
+        const session = await Session.findOne({ 
+            _id: sessionId, 
+            therapistId 
+        })
+        .select('notes scheduledTime status clientId');
+
+        if (!session) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Session not found or unauthorized access' 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            notes: session.notes,
+            sessionDetails: {
+                scheduledTime: session.scheduledTime,
+                status: session.status,
+                clientId: session.clientId
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching session notes:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+const updateSessionNotes = async (req, res) => {
+    const { sessionId } = req.params;
+    const { privateNotes, sharedNotes } = req.body;
+    const therapistId = req.userId;
+    
+    try {
+        // Create an update object with only the fields that are provided
+        const updateFields = {};
+        if (privateNotes !== undefined) {
+            updateFields['notes.therapistNotes'] = privateNotes;
+        }
+        if (sharedNotes !== undefined) {
+            updateFields['notes.sharedNotes'] = sharedNotes;
+        }
+        
+        // If no fields to update, return early
+        if (Object.keys(updateFields).length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No notes provided for update' 
+            });
+        }
+
+        const session = await Session.findOneAndUpdate(
+            { _id: sessionId, therapistId },
+            { $set: updateFields },
+            { new: true, runValidators: true }
+        );
+
+        if (!session) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Session not found or unauthorized access' 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Session notes updated successfully',
+            session
+        });
+    } catch (error) {
+        console.error('Error updating session notes:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
 
 module.exports  = {createSession,
                      getTherapistSession,
                     cancelSession,
-                updateTherapistNotes,
             setSessionStatusToCompleted,
         getClientSessions,
          deleteSession,
-         getSessionDetails};
+         getSessionDetails,
+        updatePrivateNotes,
+        updateSharedNotes,
+        getClientSessionsHistory,
+        getSessionNotes,
+        updateSessionNotes};
 

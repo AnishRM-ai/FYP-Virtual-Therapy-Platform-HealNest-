@@ -19,7 +19,11 @@ import {
   Divider,
   Snackbar,
   Avatar,
-  Alert
+  Alert,
+  Tabs,
+  Tab,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
   DeleteOutline,
@@ -27,7 +31,11 @@ import {
   AccessTimeOutlined,
   NoteOutlined,
   CloseOutlined,
-  CheckCircleOutline
+  CheckCircleOutline,
+  HistoryOutlined,
+  PersonOutlined,
+  ShareOutlined,
+  LockOutlined
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -36,23 +44,64 @@ import Layout from '../therapistDash/layout';
 
 const drawerWidth = 240;
 
+// Custom TabPanel component for the session details dialog
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`session-tabpanel-${index}`}
+      aria-labelledby={`session-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
 export default function SessionsManagement() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const [selectedTab, setSelectedTab] = useState('Sessions');
-  const { therapist, sessions = [], fetchSessions, updateSessionNotes, markSessionComplete, deleteSession} = useTherapistStore();
+  
+  // Get the required functions and state from the therapist store
+  const { 
+    therapist, 
+    sessions = [], 
+    loading: storeLoading,
+    error: storeError,
+    fetchSessions, 
+    updatePrivateNotes, 
+    updateSharedNotes,
+    markSessionComplete, 
+    deleteSession,
+    fetchClientSessionHistory
+  } = useTherapistStore();
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Session states
   const [selectedSession, setSelectedSession] = useState(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openSessionDetailsDialog, setOpenSessionDetailsDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openCompleteDialog, setOpenCompleteDialog] = useState(false);
-  const [sessionNotes, setSessionNotes] = useState('');
+  const [privateNotes, setPrivateNotes] = useState('');
+  const [sharedNotes, setSharedNotes] = useState('');
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState('success');
+  
+  // New states for enhanced functionality
+  const [detailsTabValue, setDetailsTabValue] = useState(0);
+  const [pastSessions, setPastSessions] = useState([]);
+  const [loadingPastSessions, setLoadingPastSessions] = useState(false);
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -61,13 +110,11 @@ export default function SessionsManagement() {
       try {
         await fetchSessions();
         setLoading(false);
-        // If sessionId is provided in URL, open the edit dialog for that session
+        // If sessionId is provided in URL, open the session details dialog for that session
         if (sessionId) {
           const session = sessions.find(s => s._id === sessionId);
           if (session) {
-            setSelectedSession(session);
-            setSessionNotes(session.notes?.therapistNotes || '');
-            setOpenEditDialog(true);
+            await handleViewSessionDetails(session);
           }
         }
       } catch (err) {
@@ -77,34 +124,62 @@ export default function SessionsManagement() {
     };
 
     fetchData();
-  }, [sessionId, fetchSessions]); // Removed `sessions` from dependencies
+  }, [sessionId, fetchSessions]);
 
-  // Handle editing session notes
-  const handleEdit = (session) => {
+  // Handle viewing session details and fetching past sessions
+  const handleViewSessionDetails = async (session) => {
     setSelectedSession(session);
-    setSessionNotes(session.notes?.therapistNotes || '');
+    // Handle potential null notes structure
+    setPrivateNotes(session.notes?.therapistNotes || '');
+    setSharedNotes(session.notes?.sharedNotes || '');
+    setDetailsTabValue(0); // Reset to first tab
     navigate(`/sessionList/${session._id}`, { replace: true });
-    setOpenEditDialog(true);
+    setOpenSessionDetailsDialog(true);
+    
+    // Fetch past sessions for this client
+    try {
+      setLoadingPastSessions(true);
+      // Using fetchClientSessionHistory instead of fetchClientSessions
+      const clientSessions = await fetchClientSessionHistory(session.clientId._id);
+      
+      // Filter out current session and sort by date (most recent first)
+      const filteredSessions = clientSessions
+        .filter(s => s._id !== session._id)
+        .sort((a, b) => new Date(b.scheduledTime) - new Date(a.scheduledTime));
+      
+      setPastSessions(filteredSessions);
+      setLoadingPastSessions(false);
+    } catch (err) {
+      console.error("Error fetching past sessions:", err);
+      setLoadingPastSessions(false);
+    }
   };
 
-  const handleCloseEdit = () => {
+  const handleCloseSessionDetails = () => {
     navigate('/sessionList', { replace: true });
-    setOpenEditDialog(false);
+    setOpenSessionDetailsDialog(false);
   };
 
   const handleSaveNotes = async () => {
     try {
-      await updateSessionNotes(selectedSession._id, sessionNotes);
+      // Update both types of notes
+      await updatePrivateNotes(selectedSession._id, privateNotes);
+      await updateSharedNotes(selectedSession._id, sharedNotes);
+      
       setAlertMessage('Session notes updated successfully');
       setAlertSeverity('success');
       setAlertOpen(true);
-      navigate('/sessionList', { replace: true });
-      setOpenEditDialog(false);
+      // Don't close the dialog automatically to allow user to continue viewing details
     } catch (err) {
       setAlertMessage('Failed to update session notes');
       setAlertSeverity('error');
       setAlertOpen(true);
     }
+  };
+
+  // Handle changing tabs in session details dialog
+  const handleChangeDetailsTab = (event, newValue) => {
+    setDetailsTabValue(newValue);
   };
 
   // Handle deleting a session
@@ -114,26 +189,27 @@ export default function SessionsManagement() {
   };
 
   const confirmDelete = async() => {
-    try{
+    try {
       const result = await deleteSession(selectedSession._id);
       if (result.success) {
         await fetchSessions();
         setAlertMessage('Session deleted successfully');
         setAlertSeverity('success');
         setAlertOpen(true);
-    } else {
-        setAlertMessage('Failed to delete session');
+        setOpenSessionDetailsDialog(false);
+      } else {
+        setAlertMessage(result.message || 'Failed to delete session');
         setAlertSeverity('error');
         setAlertOpen(true);
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      setAlertMessage('An error occurred while deleting the session');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    } finally {
+      setOpenDeleteDialog(false);
     }
-} catch (error) {
-    console.error('Error deleting session:', error);
-    setAlertMessage('An error occurred while deleting the session');
-    setAlertSeverity('error');
-    setAlertOpen(true);
-} finally {
-    setOpenDeleteDialog(false);
-}
   };
 
   // Handle marking session as complete
@@ -145,13 +221,20 @@ export default function SessionsManagement() {
 
   const confirmComplete = async () => {
     try {
-      console.log('Marking session complete with ID:', selectedSession._id);
-      await markSessionComplete(selectedSession._id);
-      setAlertMessage('Session marked as completed');
-      setAlertSeverity('success');
-      setAlertOpen(true);
-      navigate('/sessionList', { replace: true });
-      setOpenCompleteDialog(false);
+      const result = await markSessionComplete(selectedSession._id);
+      if (result && result.success !== false) {
+        setAlertMessage('Session marked as completed');
+        setAlertSeverity('success');
+        setAlertOpen(true);
+        navigate('/sessionList', { replace: true });
+        setOpenCompleteDialog(false);
+        setOpenSessionDetailsDialog(false);
+        await fetchSessions();
+      } else {
+        setAlertMessage(result?.message || 'Failed to mark session as completed');
+        setAlertSeverity('error');
+        setAlertOpen(true);
+      }
     } catch (err) {
       setAlertMessage('Failed to mark session as completed');
       setAlertSeverity('error');
@@ -163,12 +246,9 @@ export default function SessionsManagement() {
     setAlertOpen(false);
   };
 
-  const formatSessionTime = (date, time, duration) => {
-    const formattedDate = dayjs(`${date}T${time}`).format('MMM D, YYYY');
-    const startTime = dayjs(`${date}T${time}`).format('h:mm A');
-    const endTime = dayjs(`${date}T${time}`).add(duration, 'minute').format('h:mm A');
-    return `${formattedDate} · ${startTime} - ${endTime}`;
-  };
+  // Use the store's loading and error state if available
+  const isLoading = loading || storeLoading;
+  const errorMessage = error || storeError;
 
   return (
     <Layout
@@ -191,6 +271,7 @@ export default function SessionsManagement() {
               bgcolor: 'rgba(0, 0, 0, 0.8)',
             }
           }}
+          onClick={() => navigate('/schedule-session')} // Assuming you have a route for scheduling
         >
           Schedule New Session
         </Button>
@@ -202,13 +283,13 @@ export default function SessionsManagement() {
         </Box>
         <Divider />
 
-        {loading ? (
+        {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
           </Box>
-        ) : error ? (
+        ) : errorMessage ? (
           <Box sx={{ p: 3 }}>
-            <Typography color="error">{error}</Typography>
+            <Typography color="error">{errorMessage}</Typography>
           </Box>
         ) : (
           <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
@@ -224,7 +305,12 @@ export default function SessionsManagement() {
                     sx={{
                       py: 2,
                       bgcolor: session.status === 'completed' ? '#f9f9f9' : 'white',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: '#f0f7ff',
+                      }
                     }}
+                    onClick={() => handleViewSessionDetails(session)}
                   >
                     <ListItemAvatar>
                       <Avatar sx={{ bgcolor: session.status === 'completed' ? '#9e9e9e' : '#1976d2' }}>
@@ -284,33 +370,40 @@ export default function SessionsManagement() {
                               </Box>
                             </>
                           )}
-                          {session.notes?.therapistNotes && (
+                          {(session.notes?.sharedNotes || session.notes?.therapistNotes) && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                               <NoteOutlined sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                               <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: '500px' }}>
-                                {session.notes.therapistNotes}
+                                Notes available
                               </Typography>
                             </Box>
                           )}
                         </>
                       }
                     />
-                    <ListItemSecondaryAction>
+                    <ListItemSecondaryAction onClick={(e) => e.stopPropagation()}>
                       {session.status === 'scheduled' && (
                         <IconButton
                           edge="end"
                           aria-label="mark-completed"
-                          onClick={() => handleCompleteSession(session)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCompleteSession(session);
+                          }}
                           sx={{ mr: 1, color: 'green' }}
                           title="Mark as completed"
                         >
                           <CheckCircleOutline />
                         </IconButton>
                       )}
-                      <IconButton edge="end" aria-label="edit" onClick={() => handleEdit(session)} sx={{ mr: 1 }}>
-                        <EditOutlined />
-                      </IconButton>
-                      <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(session)}>
+                      <IconButton 
+                        edge="end" 
+                        aria-label="delete" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(session);
+                        }}
+                      >
                         <DeleteOutline />
                       </IconButton>
                     </ListItemSecondaryAction>
@@ -323,56 +416,300 @@ export default function SessionsManagement() {
         )}
       </Paper>
 
-      {/* Edit Notes Dialog */}
-      <Dialog open={openEditDialog} onClose={handleCloseEdit} fullWidth maxWidth="sm">
+      {/* Enhanced Session Details Dialog */}
+      <Dialog 
+        open={openSessionDetailsDialog} 
+        onClose={handleCloseSessionDetails} 
+        fullWidth 
+        maxWidth="md"
+        scroll="paper"
+      >
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            Edit Session Notes
-            <IconButton aria-label="close" onClick={handleCloseEdit}>
+            <Typography variant="h6">Session Details</Typography>
+            <IconButton aria-label="close" onClick={handleCloseSessionDetails}>
               <CloseOutlined />
             </IconButton>
           </Box>
         </DialogTitle>
-        <DialogContent dividers>
-          {selectedSession && (
-            <>
-              <Typography variant="subtitle1" gutterBottom>
-                {selectedSession.clientId.fullname} - {selectedSession.therapy}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {dayjs(selectedSession.scheduledTime).format('YYYY-MM-DD h:mm A')}
-              </Typography>
-              <TextField
-                label="Session Notes"
-                multiline
-                rows={6}
-                fullWidth
-                margin="normal"
-                variant="outlined"
-                value={sessionNotes}
-                onChange={(e) => setSessionNotes(e.target.value)}
-                placeholder="Add notes about this session..."
-              />
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEdit}>Cancel</Button>
-          <Button
-            onClick={handleSaveNotes}
-            variant="contained"
-            disableElevation
-            sx={{
-              bgcolor: 'black',
-              color: 'white',
-              '&:hover': {
-                bgcolor: 'rgba(0, 0, 0, 0.8)',
-              }
-            }}
-          >
-            Save Notes
-          </Button>
-        </DialogActions>
+        
+        {selectedSession && (
+          <>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs 
+                value={detailsTabValue} 
+                onChange={handleChangeDetailsTab}
+                sx={{ px: 2 }}
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                <Tab icon={<PersonOutlined />} iconPosition="start" label="Client & Session Info" />
+                <Tab icon={<ShareOutlined />} iconPosition="start" label="Shared Notes" />
+                <Tab icon={<LockOutlined />} iconPosition="start" label="Private Notes" />
+                <Tab icon={<HistoryOutlined />} iconPosition="start" label="Past Sessions" />
+              </Tabs>
+            </Box>
+            
+            <DialogContent dividers>
+              {/* Client & Session Info Tab */}
+              <TabPanel value={detailsTabValue} index={0}>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>Client Information</Typography>
+                  <Paper elevation={0} sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                      <Avatar 
+                        sx={{ width: 64, height: 64, bgcolor: '#1976d2' }}
+                      >
+                        {selectedSession.clientId.fullname.charAt(0)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6">{selectedSession.clientId.fullname}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {selectedSession.clientId.email}
+                        </Typography>
+                        {/* You would need to add these fields to your client model */}
+                        {selectedSession.clientId.phone && (
+                          <Typography variant="body2" color="text.secondary">
+                            {selectedSession.clientId.phone}
+                          </Typography>
+                        )}
+                        {selectedSession.clientId.dateOfBirth && (
+                          <Typography variant="body2" color="text.secondary">
+                            DOB: {dayjs(selectedSession.clientId.dateOfBirth).format('MMMM D, YYYY')}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Box>
+
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>Current Session</Typography>
+                  <Paper elevation={0} sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Therapy Type</Typography>
+                        <Typography variant="body1">{selectedSession.therapy}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Status</Typography>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            color: selectedSession.status === 'completed' ? 'success.main' : 
+                                  selectedSession.status === 'cancelled' ? 'error.main' : 
+                                  'info.main'
+                          }}
+                        >
+                          {selectedSession.status.charAt(0).toUpperCase() + selectedSession.status.slice(1)}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Date & Time</Typography>
+                        <Typography variant="body1">
+                          {dayjs(selectedSession.scheduledTime).format('MMMM D, YYYY h:mm A')}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Duration</Typography>
+                        <Typography variant="body1">{selectedSession.duration} minutes</Typography>
+                      </Box>
+                      {selectedSession.meetingLink && (
+                        <Box sx={{ gridColumn: 'span 2' }}>
+                          <Typography variant="body2" color="text.secondary">Meeting Link</Typography>
+                          <Typography 
+                            variant="body1" 
+                            component="a" 
+                            href={selectedSession.meetingLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            sx={{ color: 'primary.main', textDecoration: 'none' }}
+                          >
+                            {selectedSession.meetingLink}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Paper>
+                </Box>
+
+                {selectedSession.status === 'scheduled' && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      disableElevation
+                      onClick={() => handleCompleteSession(selectedSession)}
+                      startIcon={<CheckCircleOutline />}
+                    >
+                      Mark as Completed
+                    </Button>
+                  </Box>
+                )}
+              </TabPanel>
+              
+              {/* Shared Notes Tab */}
+              <TabPanel value={detailsTabValue} index={1}>
+                <Typography variant="subtitle1" color="text.secondary" paragraph>
+                  These notes will be visible to both you and the client. Use this space for session summaries,
+                  homework assignments, or any information you want to share with your client.
+                </Typography>
+                
+                <TextField
+                  label="Shared Notes"
+                  multiline
+                  rows={8}
+                  fullWidth
+                  margin="normal"
+                  variant="outlined"
+                  value={sharedNotes}
+                  onChange={(e) => setSharedNotes(e.target.value)}
+                  placeholder="Add shared notes about this session..."
+                />
+                
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Button
+                    onClick={handleSaveNotes}
+                    variant="contained"
+                    disableElevation
+                    sx={{
+                      bgcolor: 'black',
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(0, 0, 0, 0.8)',
+                      }
+                    }}
+                  >
+                    Save Notes
+                  </Button>
+                </Box>
+              </TabPanel>
+              
+              {/* Private Notes Tab */}
+              <TabPanel value={detailsTabValue} index={2}>
+                <Typography variant="subtitle1" color="text.secondary" paragraph>
+                  These notes are private and only visible to you. Use this space for your professional observations,
+                  treatment plans, or any confidential information.
+                </Typography>
+                
+                <TextField
+                  label="Private Notes"
+                  multiline
+                  rows={8}
+                  fullWidth
+                  margin="normal"
+                  variant="outlined"
+                  value={privateNotes}
+                  onChange={(e) => setPrivateNotes(e.target.value)}
+                  placeholder="Add private notes about this session..."
+                />
+                
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Button
+                    onClick={handleSaveNotes}
+                    variant="contained"
+                    disableElevation
+                    sx={{
+                      bgcolor: 'black',
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(0, 0, 0, 0.8)',
+                      }
+                    }}
+                  >
+                    Save Notes
+                  </Button>
+                </Box>
+              </TabPanel>
+              
+              {/* Past Sessions Tab */}
+              <TabPanel value={detailsTabValue} index={3}>
+                <Typography variant="h6" gutterBottom>
+                  Past Sessions with {selectedSession.clientId.fullname}
+                </Typography>
+                
+                {loadingPastSessions ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : pastSessions.length === 0 ? (
+                  <Typography color="text.secondary">
+                    No past sessions found for this client.
+                  </Typography>
+                ) : (
+                  <List sx={{ width: '100%' }}>
+                    {pastSessions.map((session) => (
+                      <Card key={session._id} sx={{ mb: 2, borderRadius: 2 }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="subtitle1" fontWeight="medium">
+                              {dayjs(session.scheduledTime).format('MMMM D, YYYY')}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                px: 1,
+                                py: 0.5,
+                                borderRadius: 1,
+                                bgcolor: session.status === 'completed' ? '#e8f5e9' : 
+                                         session.status === 'cancelled' ? '#ffebee' : '#e3f2fd',
+                                color: session.status === 'completed' ? 'success.dark' : 
+                                       session.status === 'cancelled' ? 'error.dark' : 'info.dark',
+                              }}
+                            >
+                              {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <AccessTimeOutlined sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {dayjs(session.scheduledTime).format('h:mm A')} - {session.duration} minutes
+                            </Typography>
+                          </Box>
+                          
+                          {session.therapy && (
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                              Therapy: {session.therapy}
+                            </Typography>
+                          )}
+                          
+                          {session.notes?.therapistNotes && (
+                            <Box sx={{ mt: 2 }}>
+                              <Typography variant="subtitle2" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
+                                <LockOutlined sx={{ fontSize: 16, mr: 0.5 }} />
+                                Private Notes
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" paragraph sx={{ mt: 0.5 }}>
+                                {session.notes.therapistNotes}
+                              </Typography>
+                            </Box>
+                          )}
+                          
+                          {session.notes?.sharedNotes && (
+                            <Box sx={{ mt: 2 }}>
+                              <Typography variant="subtitle2" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
+                                <ShareOutlined sx={{ fontSize: 16, mr: 0.5 }} />
+                                Shared Notes
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" paragraph sx={{ mt: 0.5 }}>
+                                {session.notes.sharedNotes}
+                              </Typography>
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </List>
+                )}
+              </TabPanel>
+            </DialogContent>
+            
+            <DialogActions>
+              <Button onClick={handleCloseSessionDetails}>Close</Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
 
       {/* Delete Confirmation Dialog */}

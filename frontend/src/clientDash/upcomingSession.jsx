@@ -33,7 +33,8 @@ import {
   StarOutline,
   Star,
   VideocamOutlined,
-  ContentCopyOutlined
+  ContentCopyOutlined,
+  CommentOutlined
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -212,6 +213,11 @@ export default function PatientSessionsManagement() {
     return sessionTime.isAfter(now.subtract(1, 'day'));
   };
 
+  // Check if session has shared notes
+  const hasSharedNotes = (session) => {
+    return session?.notes?.sharedNotes && session.notes.sharedNotes.trim() !== '';
+  };
+
   return (
     <Layout
       drawerWidth={drawerWidth}
@@ -359,6 +365,15 @@ export default function PatientSessionsManagement() {
                               <NoteOutlined sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                               <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: '500px' }}>
                                 {session.notes.patientNotes}
+                              </Typography>
+                            </Box>
+                          )}
+                          {/* Added indicator for shared notes */}
+                          {hasSharedNotes(session) && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                              <CommentOutlined sx={{ fontSize: 16, mr: 0.5, color: '#1976d2' }} />
+                              <Typography variant="body2" color="primary" noWrap sx={{ maxWidth: '500px' }}>
+                                Therapist's notes available
                               </Typography>
                             </Box>
                           )}
@@ -575,13 +590,36 @@ export default function PatientSessionsManagement() {
                 </Box>
               )}
 
+              {/* Therapist's shared notes section */}
+              {hasSharedNotes(selectedSession) && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle1" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
+                    <CommentOutlined sx={{ fontSize: 20, mr: 1, color: '#1976d2' }} />
+                    Therapist's Notes
+                  </Typography>
+                  <Paper sx={{ 
+                    mt: 1, 
+                    p: 2, 
+                    bgcolor: '#f1f8e9', 
+                    borderRadius: 1,
+                    border: '1px solid #c5e1a5'
+                  }}>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {selectedSession.notes.sharedNotes}
+                    </Typography>
+                  </Paper>
+                </>
+              )}
+
+              {/* Client's own notes section */}
               {selectedSession.notes?.patientNotes && (
                 <>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="subtitle1" fontWeight="medium">
                     Your Notes
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
                     {selectedSession.notes.patientNotes}
                   </Typography>
                 </>
@@ -615,7 +653,7 @@ export default function PatientSessionsManagement() {
                         readOnly 
                         sx={{ mb: 1 }}
                       />
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                         {selectedSession.feedback.comment || "No written feedback provided."}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
@@ -778,7 +816,7 @@ export default function PatientSessionsManagement() {
 
       {/* Alert Snackbar */}
       <Snackbar open={alertOpen} autoHideDuration={4000} onClose={handleCloseAlert}>
-        <Alert onClose={handleCloseAlert} severity={alertSeverity} sx={{ width: '100%' }}>
+      <Alert onClose={handleCloseAlert} severity={alertSeverity} sx={{ width: '100%' }}>
           {alertMessage}
         </Alert>
       </Snackbar>
