@@ -19,6 +19,7 @@ const PaymentRoutes = require('./routes/paymentRoutes');
 const ForumRoutes = require('./routes/forumRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const updateRoutes = require('./routes/updateProfileRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 connectDB();
 
@@ -89,6 +90,7 @@ app.use('/feedback', feedbackRoutes);
 app.use('/payment', PaymentRoutes);
 app.use('/forum', ForumRoutes);
 app.use('/report', reportRoutes);
+app.use('/admin', adminRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on Port ${PORT}`);
