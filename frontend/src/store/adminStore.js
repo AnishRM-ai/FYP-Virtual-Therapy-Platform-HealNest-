@@ -92,13 +92,13 @@ const useAdminStore = create(
         }
       },
       
-      verifyTherapist: async (therapistId, isApproved, feedback) => {
+      verifyTherapist: async (therapistId, isApproved) => {
         set({ isLoading: true, error: null });
         
         try {
-          const response = await axios.post(
+          const response = await axios.put(
             `${API_URL}/therapists/verify`, 
-            { therapistId, isApproved, feedback }
+            { therapistId, isTherapistVerified:isApproved}
           );
           
           // Remove the approved/rejected therapist from the list

@@ -849,8 +849,8 @@ const TherapistOnboarding = () => {
                       sx={{ borderRadius: 2 }}
                     >
                       <MenuItem value="">Select a provider</MenuItem>
-                      <MenuItem value="Stripe">Khalti</MenuItem>
-                      <MenuItem value="Paypal">Esewa</MenuItem>
+                      <MenuItem value="Khalti">Khalti</MenuItem>
+                      <MenuItem value="Esewa">Esewa</MenuItem>
                     </Select>
                   </FormControl>
                   

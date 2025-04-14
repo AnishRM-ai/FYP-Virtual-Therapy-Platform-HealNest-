@@ -12,8 +12,8 @@ const verifyToken = require('../middleware/verifyToken');
 
 // router.use(verifyToken);
 // Therapist verification routes
-router.get('/therapists/pending', getTherapistsForVerification);
-router.post('/therapists/verify',  verifyTherapist);
+router.get('/therapists/pending',  getTherapistsForVerification);
+router.put('/therapists/verify',  verifyTherapist);
 
 // Report handling routes
 router.get('/reports', getReports);

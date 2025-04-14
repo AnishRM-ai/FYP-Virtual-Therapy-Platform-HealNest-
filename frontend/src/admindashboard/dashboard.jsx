@@ -31,7 +31,7 @@ import {
   Tooltip,
   TextField,
   Alert,
-  CircularProgress
+  CircularProgress, Menu, MenuItem, FormControl, InputLabel, Select, FormHelperText
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -57,6 +57,12 @@ function HealNestAdminDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportAction, setReportAction] = useState('Resolved');
+  const [reportNotes, setReportNotes] = useState('');
+  const [reportMenuAnchor, setReportMenuAnchor] = useState(null);
+  const [activeReportId, setActiveReportId] = useState(null);
   
   // Access the admin store
   const { 
@@ -70,7 +76,7 @@ function HealNestAdminDashboard() {
     fetchPendingTherapists, 
     verifyTherapist,
     fetchAllReports,
-    fetchDashboardStats
+    fetchDashboardStats, handleReport
   } = useAdminStore();
 
   // Fetch data on component mount
@@ -95,7 +101,6 @@ function HealNestAdminDashboard() {
       const result = await verifyTherapist(
         selectedTherapist._id, // Use _id from API data
         true, // isApproved = true
-        feedbackText
       );
       
       if (result.success) {
@@ -118,6 +123,48 @@ function HealNestAdminDashboard() {
         // Refresh dashboard stats after rejection
         fetchDashboardStats();
         handleCloseModal();
+      }
+    }
+  };
+
+  // Add these new handler functions
+  const handleReportMenuClick = (event, reportId) => {
+    event.stopPropagation();
+    setReportMenuAnchor(event.currentTarget);
+    setActiveReportId(reportId);
+  };
+
+  const handleReportMenuClose = () => {
+    setReportMenuAnchor(null);
+    setActiveReportId(null);
+  };
+
+  const handleOpenReportModal = (report) => {
+    setSelectedReport(report);
+    setReportModalOpen(true);
+    setReportAction('Resolved'); // Default action
+    setReportNotes('');
+    handleReportMenuClose();
+  };
+
+  const handleCloseReportModal = () => {
+    setReportModalOpen(false);
+    setSelectedReport(null);
+  };
+
+  const submitReportAction = async () => {
+    if (selectedReport) {
+      const result = await handleReport(
+        selectedReport._id,
+        reportAction,
+        reportNotes
+      );
+      
+      if (result.success) {
+        // Refresh data after handling report
+        fetchAllReports();
+        fetchDashboardStats();
+        handleCloseReportModal();
       }
     }
   };
@@ -579,59 +626,207 @@ function HealNestAdminDashboard() {
           </Box>
         )}
 
-        {activeTab === 'reports' && (
-          <Box sx={{ p: 3 }}>
-            <Paper elevation={0} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Reports Management</Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Title</TableCell>
-                      <TableCell>Reported By</TableCell>
-                      <TableCell>Type</TableCell>
-                      <TableCell>Reported On</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {reports.map((report) => (
-                      <TableRow key={report._id}>
-                        <TableCell>{report.title || report.reason}</TableCell>
-                        <TableCell>{report.reportedBy?.username || 'Anonymous'}</TableCell>
-                        <TableCell>{report.type || 'General'}</TableCell>
-                        <TableCell>
-                          {new Date(report.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={report.status || 'Pending'} 
-                            size="small"
-                            sx={{ 
-                              bgcolor: report.status === 'Resolved' ? '#D1E7DD' : '#FFF3CD',
-                              color: report.status === 'Resolved' ? '#155724' : '#856404'
-                            }} 
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <IconButton size="small">
-                            <MoreVertIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {reports.length === 0 && !isLoading && (
-                      <TableRow>
-                        <TableCell colSpan={6} align="center">No reports found</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
+{activeTab === 'reports' && (
+    <Box sx={{ p: 3 }}>
+      <Paper elevation={0} sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>Reports Management</Typography>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Reported By</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Reported On</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {reports.map((report) => (
+                <TableRow 
+                  key={report._id}
+                  sx={{ '&:hover': { backgroundColor: '#f5f5f5' }, cursor: 'pointer' }}
+                  onClick={() => handleOpenReportModal(report)}
+                >
+                  <TableCell>{report.title || report.reason}</TableCell>
+                  <TableCell>{report.reportedBy?.username || 'Anonymous'}</TableCell>
+                  <TableCell>{report.type || 'General'}</TableCell>
+                  <TableCell>
+                    {new Date(report.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={report.status || 'Pending'} 
+                      size="small"
+                      sx={{ 
+                        bgcolor: report.status === 'Resolved' ? '#D1E7DD' : '#FFF3CD',
+                        color: report.status === 'Resolved' ? '#155724' : '#856404'
+                      }} 
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton 
+                      size="small"
+                      onClick={(e) => handleReportMenuClick(e, report._id)}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {reports.length === 0 && !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">No reports found</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+      
+      {/* Report action menu */}
+      <Menu
+        anchorEl={reportMenuAnchor}
+        open={Boolean(reportMenuAnchor)}
+        onClose={handleReportMenuClose}
+      >
+        <MenuItem onClick={() => {
+          const report = reports.find(r => r._id === activeReportId);
+          if (report) handleOpenReportModal(report);
+        }}>
+          View Details
+        </MenuItem>
+        <MenuItem onClick={() => {
+          const report = reports.find(r => r._id === activeReportId);
+          if (report) {
+            setSelectedReport(report);
+            setReportAction('Resolved');
+            setReportNotes('No issues found.');
+            setReportModalOpen(true);
+          }
+          handleReportMenuClose();
+        }}>
+          Mark as Resolved
+        </MenuItem>
+        <MenuItem onClick={() => {
+          const report = reports.find(r => r._id === activeReportId);
+          if (report) {
+            setSelectedReport(report);
+            setReportAction('Rejected');
+            setReportNotes('Report was rejected after review.');
+            setReportModalOpen(true);
+          }
+          handleReportMenuClose();
+        }}>
+          Reject Report
+        </MenuItem>
+      </Menu>
+    </Box>
+  )}
+
+  {/* Add this new dialog for report handling */}
+  <Dialog
+    open={reportModalOpen}
+    onClose={handleCloseReportModal}
+    maxWidth="md"
+    fullWidth
+  >
+    {selectedReport && (
+      <>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Report Action</Typography>
+            <IconButton onClick={handleCloseReportModal}>
+              <CloseIcon />
+            </IconButton>
           </Box>
-        )}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <Typography variant="h6" gutterBottom>{selectedReport.title || selectedReport.reason}</Typography>
+              <Chip 
+                label={selectedReport.status || 'Pending'} 
+                sx={{ 
+                  bgcolor: selectedReport.status === 'Resolved' ? '#D1E7DD' : '#FFF3CD',
+                  color: selectedReport.status === 'Resolved' ? '#155724' : '#856404',
+                  mb: 2
+                }} 
+              />
+              
+              <Typography variant="subtitle2" gutterBottom>Reported On</Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {new Date(selectedReport.createdAt).toLocaleDateString()}
+              </Typography>
+              
+              <Typography variant="subtitle2" gutterBottom>Reported By</Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {selectedReport.reportedBy?.username || 'Anonymous User'}
+              </Typography>
+              
+              <Typography variant="subtitle2" gutterBottom>Report Type</Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {selectedReport.type || 'General Report'}
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={8}>
+              <Typography variant="h6" gutterBottom>Report Details</Typography>
+              <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                <Typography variant="body2">
+                  {selectedReport.description || selectedReport.reason || 'No detailed description provided.'}
+                </Typography>
+              </Paper>
+              
+              <Typography variant="h6" gutterBottom>Take Action</Typography>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="report-action-label">Action</InputLabel>
+                <Select
+                  labelId="report-action-label"
+                  value={reportAction}
+                  label="Action"
+                  onChange={(e) => setReportAction(e.target.value)}
+                >
+                  <MenuItem value="resolved">Mark as Resolved</MenuItem>
+                  <MenuItem value="reviewing">Set to Under Review</MenuItem>
+                  <MenuItem value="dismissed">Reject Report</MenuItem>
+                </Select>
+                <FormHelperText>Select the action to take on this report</FormHelperText>
+              </FormControl>
+              
+              <Typography variant="subtitle2" gutterBottom>Admin Notes</Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                variant="outlined"
+                placeholder="Add notes about how this report was handled..."
+                value={reportNotes}
+                onChange={(e) => setReportNotes(e.target.value)}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+          <Button 
+            variant="outlined" 
+            onClick={handleCloseReportModal}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={submitReportAction}
+            disabled={isLoading}
+          >
+            {isLoading ? <CircularProgress size={24} /> : 'Submit Action'}
+          </Button>
+        </DialogActions>
+      </>
+    )}
+  </Dialog>
       </Box>
 
       {/* Therapist details modal */}

@@ -175,6 +175,12 @@ const loginAdmin = async (req, res) => {
         }
 
         const token = generateJWTToken(admin._id, admin.role);
+        res.cookie("token", token, {
+            httpOnly: true,   // Prevents client-side access to the cookie
+            secure: process.env.NODE_ENV === "production", // Ensures it's sent over HTTPS in production
+            sameSite: "Strict", // Prevents CSRF attacks
+            maxAge: 24 * 60 * 60 * 1000 // 1 day expiration
+        });
         res.status(200).json({success: true, message:'Admin login successful', token, admin:{
             name: admin.name, email: admin.email, role: admin.role
         }});
@@ -182,7 +188,7 @@ const loginAdmin = async (req, res) => {
         console.error(err);
         res.status(500).json({success: false, message:'An error occured during login!'});
     }
-}
+};
 
 
 
@@ -324,11 +330,12 @@ const checkAuth = async (req, res) => {
         }
 
         const user = await User.findById(req.userId).select("-password");
+  
         if (!user) {
             return res.status(400).json({ success: false, message: "User not found" });
         }
 
-        res.status(200).json({ success: true, user });
+        res.status(200).json({ success: true, user});
     } catch (error) {
         console.log("Error in checkAuth", error);
         res.status(400).json({ success: false, message: error.message });

@@ -47,7 +47,7 @@ const verifyTherapist = async (req, res) => {
             therapist.isTherapistVerified = true;
             await therapist.save();
             
-            // You might want to send an email notification to the therapist
+            // notification
             
             return res.status(200).json({
                 success: true,
@@ -57,7 +57,6 @@ const verifyTherapist = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: "Therapist verification has been rejected",
-                feedback
             });
         }
     } catch (error) {
