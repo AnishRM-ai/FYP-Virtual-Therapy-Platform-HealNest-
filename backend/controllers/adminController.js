@@ -1,6 +1,8 @@
 const Therapist = require('../models/therapistDB');
 const Reports = require('../models/reportModel');
 const User = require('../models/User');
+const Post = require('../models/forumPage');
+
 
 /**
  * Get all unverified therapists
