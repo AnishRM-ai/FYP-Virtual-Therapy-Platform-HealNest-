@@ -10,7 +10,8 @@ import {
   MenuItem,
   Divider,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Button
 } from '@mui/material';
 import {
   NotificationsOutlined,
@@ -36,6 +37,11 @@ const TopBar = ({ drawerWidth, user, onLogout }) => {
     setAnchorEl(null);
   };
 
+
+  const forum = () =>{
+    navigate('/feed');
+  }
+
   const handleLogout = async () => {
     handleClose();
    try{
@@ -46,6 +52,8 @@ const TopBar = ({ drawerWidth, user, onLogout }) => {
     console.error("Logout failed", error);
    }
   };
+
+  
 
   return (
     <AppBar
@@ -59,6 +67,8 @@ const TopBar = ({ drawerWidth, user, onLogout }) => {
       }}
     >
       <Toolbar sx={{ justifyContent: 'flex-end' }}>
+      <Button onClick={forum}>Forum</Button>
+
         <IconButton size="large" color="inherit">
           <NotificationsOutlined />
         </IconButton>

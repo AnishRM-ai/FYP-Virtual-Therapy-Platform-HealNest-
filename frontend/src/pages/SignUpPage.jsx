@@ -1,9 +1,11 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { Box, TextField, Button, Typography, Divider, Container, Grid } from '@mui/material';
+import { Box, TextField, Button, Typography, Divider, Container, Grid, Alert } from '@mui/material';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import Alert from '@mui/material/Alert';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import toast from 'react-hot-toast';
 
 export default function SignUpPage() {
@@ -64,23 +66,111 @@ export default function SignUpPage() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
-      <Grid container spacing={2} alignItems="center">
+    <Container maxWidth="lg" sx={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center',
+      py: 4,
+      background: 'linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%)',
+    }}>
+      <Grid container spacing={3} alignItems="center">
         {/* Left Side - Benefits Section */}
-        <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', p: 4, background: 'linear-gradient(to right, #a8e6cf, #dcedc1)', borderRadius: 3 }}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Welcome to Virtual Therapy
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 2, maxWidth: '80%' }}>
-            Discover a new way to take care of your mental health. Our platform provides you with:
-          </Typography>
-          <ul style={{ textAlign: 'left', maxWidth: '80%' }}>
-            <li><Typography variant="body1">✔ Professional, certified therapists</Typography></li>
-            <li><Typography variant="body1">✔ Secure and private sessions</Typography></li>
-            <li><Typography variant="body1">✔ Flexible scheduling</Typography></li>
-            <li><Typography variant="body1">✔ Affordable pricing</Typography></li>
-            <li><Typography variant="body1">✔ 24/7 access to resources</Typography></li>
-          </ul>
+        <Grid item xs={12} md={6}>
+          <Box sx={{
+            p: 5,
+            borderRadius: 4,
+            boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.05)',
+            background: 'linear-gradient(145deg, #f5f7fa 0%, #e4ecfb 100%)',
+            textAlign: 'center',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #81c784 0%, #64b5f6 50%, #9575cd 100%)',
+            }
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <PsychologyIcon sx={{ color: '#5c6bc0', fontSize: 48 }} />
+            </Box>
+            
+            <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ color: '#37474f' }}>
+              Begin Your Wellness Journey
+            </Typography>
+            
+            <Typography variant="body1" sx={{ mb: 4, color: '#546e7a' }}>
+              Join our supportive community and discover new ways to nurture your mental wellbeing:
+            </Typography>
+            
+            <Box sx={{ 
+              textAlign: 'left', 
+              mb: 3,
+              '& .MuiGrid-item': {
+                display: 'flex',
+                alignItems: 'center',
+                mb: 2
+              }
+            }}>
+              <Grid container>
+                <Grid item xs={12} sx={{ mb: 2 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    p: 2, 
+                    borderRadius: 2, 
+                    bgcolor: 'rgba(129, 199, 132, 0.1)',
+                    border: '1px solid rgba(129, 199, 132, 0.2)',
+                  }}>
+                    <SelfImprovementIcon sx={{ color: '#81c784', mr: 2 }} />
+                    <Typography variant="body1" sx={{ color: '#455a64' }}>
+                      Connect with compassionate, certified therapists
+                    </Typography>
+                  </Box>
+                </Grid>
+                
+                <Grid item xs={12} sx={{ mb: 2 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    p: 2, 
+                    borderRadius: 2, 
+                    bgcolor: 'rgba(92, 107, 192, 0.1)',
+                    border: '1px solid rgba(92, 107, 192, 0.2)',
+                  }}>
+                    <FavoriteIcon sx={{ color: '#5c6bc0', mr: 2 }} />
+                    <Typography variant="body1" sx={{ color: '#455a64' }}>
+                      Safe and confidential therapy sessions
+                    </Typography>
+                  </Box>
+                </Grid>
+                
+                <Grid item xs={12} sx={{ mb: 2 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    p: 2, 
+                    borderRadius: 2, 
+                    bgcolor: 'rgba(100, 181, 246, 0.1)',
+                    border: '1px solid rgba(100, 181, 246, 0.2)',
+                  }}>
+                    <SelfImprovementIcon sx={{ color: '#64b5f6', mr: 2 }} />
+                    <Typography variant="body1" sx={{ color: '#455a64' }}>
+                      Access therapeutic resources anytime, anywhere
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+            
+            <Typography variant="body2" sx={{ fontStyle: 'italic', color: '#78909c', mt: 2 }}>
+              "The journey of a thousand miles begins with a single step."
+            </Typography>
+          </Box>
         </Grid>
 
         {/* Right Side - Signup Form */}
@@ -88,48 +178,238 @@ export default function SignUpPage() {
           <Box
             sx={{
               width: '100%',
-              maxWidth: 400,
-              px: 3,
-              py: 4,
+              maxWidth: 450,
+              px: 4,
+              py: 5,
               backgroundColor: 'white',
-              borderRadius: 3,
-              boxShadow: 3,
+              borderRadius: 4,
+              boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.05)',
               textAlign: 'center',
               mx: 'auto',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: 'linear-gradient(90deg, #64b5f6 0%, #81c784 50%, #ffb74d 100%)',
+              }
             }}
           >
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <FavoriteIcon sx={{ color: '#5c6bc0', fontSize: 40 }} />
+            </Box>
+            
+            <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ color: '#37474f' }}>
               Create Your Account
             </Typography>
-            <Typography variant="body2" color="textSecondary" mb={3}>
-              Welcome! Fill in the details to get started.
+            <Typography variant="body2" color="#78909c" mb={3}>
+              We're glad you're here. Let's get started on your journey.
             </Typography>
 
-            <Divider sx={{ my: 2 }}></Divider>
+            <Divider sx={{ my: 2, color: '#90a4ae', '&::before, &::after': { borderColor: '#cfd8dc' } }} />
+            
             {error && (
-              <Alert severity="error" sx={{ width: "100%", maxWidth: 400 }}>
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  width: "100%", 
+                  maxWidth: 450, 
+                  mb: 2,
+                  borderRadius: 2,
+                  '& .MuiAlert-icon': { color: '#e57373' } 
+                }}
+              >
                 {error}
               </Alert>
             )}
 
             <form onSubmit={handleSubmit}>
-              <TextField fullWidth label="Full name" variant="outlined" margin="normal" name="fullname" value={formData.fullname} onChange={handleChange} error={!!errors.fullname} helperText={errors.fullname} />
-              <TextField fullWidth label="Username" variant="outlined" margin="normal" name="username" value={formData.username} onChange={handleChange} error={!!errors.username} helperText={errors.username} />
-              <TextField fullWidth label="Email address" variant="outlined" margin="normal" type="email" name="email" value={formData.email} onChange={handleChange} error={!!errors.email} helperText={errors.email} />
-              <TextField fullWidth label="Password" variant="outlined" margin="normal" type="password" name="password" value={formData.password} onChange={handleChange} error={!!errors.password} helperText={errors.password} />
+              <TextField 
+                fullWidth 
+                label="Full name" 
+                variant="outlined" 
+                margin="normal" 
+                name="fullname" 
+                value={formData.fullname} 
+                onChange={handleChange} 
+                error={!!errors.fullname} 
+                helperText={errors.fullname}
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    '&:hover fieldset': {
+                      borderColor: '#64b5f6',
+                    },
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#b0bec5',
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: '#78909c',
+                  },
+                  "& .MuiInputLabel-root.Mui-focused": {
+                    color: '#5c6bc0',
+                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#5c6bc0',
+                  },
+                }}
+              />
+              
+              <TextField 
+                fullWidth 
+                label="Username" 
+                variant="outlined" 
+                margin="normal" 
+                name="username" 
+                value={formData.username} 
+                onChange={handleChange} 
+                error={!!errors.username} 
+                helperText={errors.username}
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    '&:hover fieldset': {
+                      borderColor: '#64b5f6',
+                    },
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#b0bec5',
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: '#78909c',
+                  },
+                  "& .MuiInputLabel-root.Mui-focused": {
+                    color: '#5c6bc0',
+                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#5c6bc0',
+                  },
+                }}
+              />
+              
+              <TextField 
+                fullWidth 
+                label="Email address" 
+                variant="outlined" 
+                margin="normal" 
+                type="email" 
+                name="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                error={!!errors.email} 
+                helperText={errors.email}
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    '&:hover fieldset': {
+                      borderColor: '#64b5f6',
+                    },
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#b0bec5',
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: '#78909c',
+                  },
+                  "& .MuiInputLabel-root.Mui-focused": {
+                    color: '#5c6bc0',
+                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#5c6bc0',
+                  },
+                }}
+              />
+              
+              <TextField 
+                fullWidth 
+                label="Password" 
+                variant="outlined" 
+                margin="normal" 
+                type="password" 
+                name="password" 
+                value={formData.password} 
+                onChange={handleChange} 
+                error={!!errors.password} 
+                helperText={errors.password}
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    '&:hover fieldset': {
+                      borderColor: '#64b5f6',
+                    },
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#b0bec5',
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: '#78909c',
+                  },
+                  "& .MuiInputLabel-root.Mui-focused": {
+                    color: '#5c6bc0',
+                  },
+                  "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: '#5c6bc0',
+                  },
+                }}
+              />
 
-              <Button fullWidth variant="contained" type="submit" sx={{ mt: 2, py: 1.5, backgroundColor: '#34495E', borderRadius: 5, ':hover': { backgroundColor: '#7756c6' } }}>
-                Signup
+              <Button 
+                fullWidth 
+                variant="contained" 
+                type="submit" 
+                sx={{ 
+                  mt: 2, 
+                  py: 1.5, 
+                  backgroundColor: '#5c6bc0', 
+                  borderRadius: 3,
+                  boxShadow: '0 4px 12px rgba(92, 107, 192, 0.3)',
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  ':hover': { 
+                    backgroundColor: '#3949ab',
+                    boxShadow: '0 6px 14px rgba(92, 107, 192, 0.4)',
+                  }
+                }}
+              >
+                Begin Your Journey
               </Button>
             </form>
 
-            <Divider sx={{ my: 2 }}></Divider>
-            <Typography variant="body2" color="textSecondary" mt={2}>
+            <Divider sx={{ my: 3, color: '#90a4ae', '&::before, &::after': { borderColor: '#cfd8dc' } }} />
+            
+            <Typography variant="body2" color="#78909c">
               Already have an account?{' '}
-              <Typography component="span" color="primary" onClick={() => navigate("/signin")} sx={{ textDecoration: 'underline', cursor: 'pointer' }}>
+              <Typography 
+                component="span" 
+                sx={{ 
+                  color: '#5c6bc0', 
+                  textDecoration: 'none', 
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    textDecoration: 'underline',
+                  } 
+                }} 
+                onClick={() => navigate("/signin")}
+              >
                 Sign in
               </Typography>
             </Typography>
+            
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <Typography variant="caption" color="#78909c">
+                Your mental health journey matters. We're here with you every step of the way.
+              </Typography>
+            </Box>
           </Box>
         </Grid>
       </Grid>

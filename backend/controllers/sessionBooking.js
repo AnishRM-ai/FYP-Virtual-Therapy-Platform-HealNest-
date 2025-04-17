@@ -7,8 +7,9 @@ const paymentController = require('../controllers/paymentController');
 
 
 // Get OAuth2 client and stored credential
-const getOAuth2Client = async (userId) => {
-    const tokenData = await GoogleToken.findOne({ userId});
+const getOAuth2Client = async (req, res) => {
+    const therapistId = req.params;
+    const tokenData = await GoogleToken.findOne({therapistId});
     if(!tokenData) throw new Error('Google authentication required');
 
     const oauth2Client = new google.auth.OAuth2(

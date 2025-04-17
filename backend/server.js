@@ -73,7 +73,7 @@ app.get(
         });
 
         
-            res.redirect('http://localhost:5173/client-dashboard');
+            res.redirect('http://localhost:5173/signin');
         
     }
 );

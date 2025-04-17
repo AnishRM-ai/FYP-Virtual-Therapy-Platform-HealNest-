@@ -125,6 +125,16 @@ const NavBar = ({ mode, setMode}) => {
     handleUserMenuClose();
   };
 
+  const howitworks = () => {
+    navigate('/howitworks');
+    handleUserMenuClose();
+  };
+
+  const aboutme = () => {
+    navigate('/about');
+    handleUserMenuClose();
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <AppBar position="sticky" color="default" elevation={1}>
@@ -134,8 +144,8 @@ const NavBar = ({ mode, setMode}) => {
           </Typography>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
             <Button color="inherit" onClick={findTherapist}>Find Therapist</Button>
-            <Button color="inherit">How It Works</Button>
-            <Button color="inherit">About Us</Button>
+            <Button color="inherit" onClick={howitworks}>How It Works</Button>
+            <Button color="inherit" onClick={aboutme}>About Us</Button>
           </Box>
 
           <IconButton

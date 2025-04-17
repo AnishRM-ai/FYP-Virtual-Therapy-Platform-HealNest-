@@ -76,7 +76,7 @@ const TopBar = ({ drawerWidth = 240 }) => {
           onClick={() => handleNavigate('/feed')}
           sx={{ color: 'inherit', mr: 1 }}
         >
-          Feed
+          Forum
         </Button>
         <IconButton size="large" color="inherit">
           <NotificationsOutlined />

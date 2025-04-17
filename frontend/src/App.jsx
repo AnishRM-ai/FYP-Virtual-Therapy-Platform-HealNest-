@@ -27,6 +27,8 @@ import MindShareFeed from "./pages/feedPage.jsx";
 import PaymentSuccessPage from "./components/paymentSuccess.jsx";
 import AdminLoginPage from "./admindashboard/adminlogin.jsx";
 import ProfileEditPage from "./therapistDash/profile.jsx";
+import HowItWorksPage from "./pages/howitworks.jsx";
+import AboutMePage from "./pages/aboutus.jsx";
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
 
@@ -98,7 +100,7 @@ const App = () => {
            
             justifyContent: "center",
             alignItems: "center",
-            background: "#FFFFFF",
+          
           },
           "#root": {
             width: "100%",
@@ -138,6 +140,9 @@ const App = () => {
         <Route path="/clientsessionList" element={<PatientSessionsManagement/>} />
         <Route path="/clientsessionList/:id" element={<PatientSessionsManagement/>} />
 
+
+        <Route path="/howitworks" element={<HowItWorksPage/>} />
+        <Route path="/about" element={<AboutMePage/>} />
         <Route path="/journal" element={<JournalManagement/>} />
         <Route path="/journal/:id" element={<JournalManagement/>} />
 
