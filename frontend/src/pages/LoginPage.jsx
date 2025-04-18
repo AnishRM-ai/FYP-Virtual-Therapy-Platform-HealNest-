@@ -40,6 +40,7 @@ export default function LoginPage() {
   };
 
   return (
+    <Box sx={{background: 'linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%)'}}>
     <Container
       sx={{
         display: 'flex',
@@ -255,5 +256,6 @@ export default function LoginPage() {
         </Box>
       </Box>
     </Container>
+    </Box>
   );
 }

@@ -16,7 +16,6 @@ const therapistSchema = new mongoose.Schema(
         },
             specializations: [{
                 type: String,
-                enum: ['Depression', 'Anxiety', 'Relationship', 'Trauma', ]
             }],
             education: [{
                 degree: String,

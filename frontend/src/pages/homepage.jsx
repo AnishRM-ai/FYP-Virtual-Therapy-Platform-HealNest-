@@ -334,49 +334,9 @@ const HomePage = () => {
             </Grid>
           </Grid>
 
-          {/* Search Bar */}
-          {isLoading ? (
-            <Box sx={{ mt: 6, mx: 'auto', maxWidth: 600 }}>
-              <Skeleton variant="rectangular" height={60} width="100%" sx={{ borderRadius: 50 }} />
-            </Box>
-          ) : (
-            <AnimatedElement delay={0.4} direction="up">
-              <Box 
-                component={Paper} 
-                elevation={2} 
-                sx={{ 
-                  mt: 6, 
-                  mx: 'auto', 
-                  maxWidth: 600, 
-                  borderRadius: 50,
-                  p: 0.5,
-                  display: 'flex'
-                }}
-              >
-                <TextField
-                  fullWidth
-                  placeholder="Search by specialty, name, or issue"
-                  variant="standard"
-                  InputProps={{
-                    disableUnderline: true,
-                    sx: { pl: 2 }
-                  }}
-                />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  sx={{ 
-                    minWidth: 'unset', 
-                    width: 40, 
-                    height: 40, 
-                    borderRadius: '50%'
-                  }}
-                >
-                  <SearchIcon />
-                </Button>
-              </Box>
-            </AnimatedElement>
-          )}
+      
+         
+          
         </Container>
 
         {/* Featured Therapists */}

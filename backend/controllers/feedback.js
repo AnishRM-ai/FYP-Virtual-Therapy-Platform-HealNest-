@@ -91,8 +91,7 @@ const getSessionFeedback = async (req, res) => {
 
 const getCurrentTherapistFeedback = async (req, res) => {
     try {
-        // Assuming req.therapist is set by authentication middleware
-        // and contains the currently authenticated therapist's information
+
         const therapistId = req.userId;
 
         if (!therapistId) {

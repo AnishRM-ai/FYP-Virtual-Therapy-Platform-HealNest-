@@ -66,12 +66,13 @@ export default function SignUpPage() {
   };
 
   return (
+    <Box sx={{background: 'linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%)'}}>
     <Container maxWidth="lg" sx={{ 
       minHeight: '100vh', 
       display: 'flex', 
       alignItems: 'center',
       py: 4,
-      background: 'linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%)',
+      // background: 'linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%)',
     }}>
       <Grid container spacing={3} alignItems="center">
         {/* Left Side - Benefits Section */}
@@ -414,5 +415,6 @@ export default function SignUpPage() {
         </Grid>
       </Grid>
     </Container>
+    </Box>
   );
 }
