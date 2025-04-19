@@ -23,7 +23,8 @@ import {
   Tabs,
   Tab,
   Card,
-  CardContent
+  CardContent,
+  Chip
 } from '@mui/material';
 import {
   DeleteOutline,
@@ -35,7 +36,8 @@ import {
   HistoryOutlined,
   PersonOutlined,
   ShareOutlined,
-  LockOutlined
+  LockOutlined,
+  AddCircleOutline
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -78,6 +80,7 @@ export default function SessionsManagement() {
     error: storeError,
     fetchSessions, 
     updatePrivateNotes, 
+    deletePrivateNote,
     updateSharedNotes,
     markSessionComplete, 
     deleteSession,
@@ -92,7 +95,7 @@ export default function SessionsManagement() {
   const [openSessionDetailsDialog, setOpenSessionDetailsDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openCompleteDialog, setOpenCompleteDialog] = useState(false);
-  const [privateNotes, setPrivateNotes] = useState('');
+  const [newPrivateNote, setNewPrivateNote] = useState('');
   const [sharedNotes, setSharedNotes] = useState('');
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
@@ -102,6 +105,8 @@ export default function SessionsManagement() {
   const [detailsTabValue, setDetailsTabValue] = useState(0);
   const [pastSessions, setPastSessions] = useState([]);
   const [loadingPastSessions, setLoadingPastSessions] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+  const [openDeleteNoteDialog, setOpenDeleteNoteDialog] = useState(false);
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -129,8 +134,9 @@ export default function SessionsManagement() {
   // Handle viewing session details and fetching past sessions
   const handleViewSessionDetails = async (session) => {
     setSelectedSession(session);
-    // Handle potential null notes structure
-    setPrivateNotes(session.notes?.therapistNotes || '');
+    // Reset the new private note input
+    setNewPrivateNote('');
+    // Set shared notes from session
     setSharedNotes(session.notes?.sharedNotes || '');
     setDetailsTabValue(0); // Reset to first tab
     navigate(`/sessionList/${session._id}`, { replace: true });
@@ -160,20 +166,74 @@ export default function SessionsManagement() {
     setOpenSessionDetailsDialog(false);
   };
 
-  const handleSaveNotes = async () => {
+  const handleAddPrivateNote = async () => {
+    if (!newPrivateNote.trim()) return;
+    
     try {
-      // Update both types of notes
-      await updatePrivateNotes(selectedSession._id, privateNotes);
-      await updateSharedNotes(selectedSession._id, sharedNotes);
-      
-      setAlertMessage('Session notes updated successfully');
+      await updatePrivateNotes(selectedSession._id, newPrivateNote);
+      // Refresh sessions to get the updated notes
+      await fetchSessions();
+      // Update the selected session with the latest data
+      const updatedSession = sessions.find(s => s._id === selectedSession._id);
+      if (updatedSession) {
+        setSelectedSession(updatedSession);
+      }
+      setNewPrivateNote(''); // Clear the input field
+      setAlertMessage('Private note added successfully');
       setAlertSeverity('success');
       setAlertOpen(true);
-      // Don't close the dialog automatically to allow user to continue viewing details
     } catch (err) {
-      setAlertMessage('Failed to update session notes');
+      setAlertMessage('Failed to add private note');
       setAlertSeverity('error');
       setAlertOpen(true);
+    }
+  };
+
+  const handleSaveSharedNotes = async () => {
+    try {
+      await updateSharedNotes(selectedSession._id, sharedNotes);
+      // Refresh sessions to get the updated notes
+      await fetchSessions();
+      // Update the selected session with the latest data
+      const updatedSession = sessions.find(s => s._id === selectedSession._id);
+      if (updatedSession) {
+        setSelectedSession(updatedSession);
+      }
+      setAlertMessage('Shared notes updated successfully');
+      setAlertSeverity('success');
+      setAlertOpen(true);
+    } catch (err) {
+      setAlertMessage('Failed to update shared notes');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    }
+  };
+
+  const handleDeletePrivateNote = (noteId) => {
+    setNoteToDelete(noteId);
+    setOpenDeleteNoteDialog(true);
+  };
+
+  const confirmDeleteNote = async () => {
+    try {
+      await deletePrivateNote(selectedSession._id, noteToDelete);
+      // Refresh sessions to get the updated notes
+      await fetchSessions();
+      // Update the selected session with the latest data
+      const updatedSession = sessions.find(s => s._id === selectedSession._id);
+      if (updatedSession) {
+        setSelectedSession(updatedSession);
+      }
+      setAlertMessage('Note deleted successfully');
+      setAlertSeverity('success');
+      setAlertOpen(true);
+    } catch (err) {
+      setAlertMessage('Failed to delete note');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    } finally {
+      setOpenDeleteNoteDialog(false);
+      setNoteToDelete(null);
     }
   };
 
@@ -244,6 +304,11 @@ export default function SessionsManagement() {
 
   const handleCloseAlert = () => {
     setAlertOpen(false);
+  };
+
+  // Format the date for a note
+  const formatNoteDate = (dateString) => {
+    return dayjs(dateString).format('MMM D, YYYY [at] h:mm A');
   };
 
   // Use the store's loading and error state if available
@@ -370,7 +435,7 @@ export default function SessionsManagement() {
                               </Box>
                             </>
                           )}
-                          {(session.notes?.sharedNotes || session.notes?.therapistNotes) && (
+                          {((session.notes?.privateNotes && session.notes.privateNotes.length > 0) || session.notes?.sharedNotes) && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                               <NoteOutlined sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                               <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: '500px' }}>
@@ -569,7 +634,7 @@ export default function SessionsManagement() {
                 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                   <Button
-                    onClick={handleSaveNotes}
+                    onClick={handleSaveSharedNotes}
                     variant="contained"
                     disableElevation
                     sx={{
@@ -580,7 +645,7 @@ export default function SessionsManagement() {
                       }
                     }}
                   >
-                    Save Notes
+                    Save Shared Notes
                   </Button>
                 </Box>
               </TabPanel>
@@ -592,34 +657,74 @@ export default function SessionsManagement() {
                   treatment plans, or any confidential information.
                 </Typography>
                 
-                <TextField
-                  label="Private Notes"
-                  multiline
-                  rows={8}
-                  fullWidth
-                  margin="normal"
-                  variant="outlined"
-                  value={privateNotes}
-                  onChange={(e) => setPrivateNotes(e.target.value)}
-                  placeholder="Add private notes about this session..."
-                />
+                {/* Add new private note */}
+                <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+                  <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                    Add New Note
+                  </Typography>
+                  <TextField
+                    label="New Private Note"
+                    multiline
+                    rows={4}
+                    fullWidth
+                    margin="normal"
+                    variant="outlined"
+                    value={newPrivateNote}
+                    onChange={(e) => setNewPrivateNote(e.target.value)}
+                    placeholder="Add a new private note about this session..."
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                    <Button
+                      onClick={handleAddPrivateNote}
+                      variant="contained"
+                      disableElevation
+                      startIcon={<AddCircleOutline />}
+                      disabled={!newPrivateNote.trim()}
+                      sx={{
+                        bgcolor: 'black',
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: 'rgba(0, 0, 0, 0.8)',
+                        }
+                      }}
+                    >
+                      Add Note
+                    </Button>
+                  </Box>
+                </Paper>
+
+                {/* Display existing private notes */}
+                <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                  Previous Notes
+                </Typography>
                 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                  <Button
-                    onClick={handleSaveNotes}
-                    variant="contained"
-                    disableElevation
-                    sx={{
-                      bgcolor: 'black',
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: 'rgba(0, 0, 0, 0.8)',
-                      }
-                    }}
-                  >
-                    Save Notes
-                  </Button>
-                </Box>
+                {(!selectedSession.notes?.privateNotes || selectedSession.notes.privateNotes.length === 0) ? (
+                  <Typography color="text.secondary">No private notes yet.</Typography>
+                ) : (
+                  <List>
+                    {selectedSession.notes.privateNotes.map((note, index) => (
+                      <Card key={note._id || index} sx={{ mb: 2, borderRadius: 2 }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {formatNoteDate(note.createdAt)}
+                            </Typography>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDeletePrivateNote(note._id)}
+                              sx={{ color: 'error.main' }}
+                            >
+                              <DeleteOutline fontSize="small" />
+                            </IconButton>
+                          </Box>
+                          <Typography variant="body1" sx={{ mt: 1 }}>
+                            {note.content}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </List>
+                )}
               </TabPanel>
               
               {/* Past Sessions Tab */}
@@ -674,15 +779,24 @@ export default function SessionsManagement() {
                             </Typography>
                           )}
                           
-                          {session.notes?.therapistNotes && (
+                          {session.notes?.privateNotes && session.notes.privateNotes.length > 0 && (
                             <Box sx={{ mt: 2 }}>
                               <Typography variant="subtitle2" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
                                 <LockOutlined sx={{ fontSize: 16, mr: 0.5 }} />
                                 Private Notes
                               </Typography>
-                              <Typography variant="body2" color="text.secondary" paragraph sx={{ mt: 0.5 }}>
-                                {session.notes.therapistNotes}
-                              </Typography>
+                              {session.notes.privateNotes.map((note, i) => (
+                                <Box key={note._id || i} sx={{ mt: 1, mb: 2 }}>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    {formatNoteDate(note.createdAt)}
+                                  </Typography>
+                                  <Typography variant="body2" paragraph>
+                                    {note.content}
+                                  </Typography>
+                                  {i < session.notes.privateNotes.length - 1 && <Divider sx={{ my: 1 }} />}
+                                </Box>
+                              ))}
+                  
                             </Box>
                           )}
                           
@@ -692,11 +806,21 @@ export default function SessionsManagement() {
                                 <ShareOutlined sx={{ fontSize: 16, mr: 0.5 }} />
                                 Shared Notes
                               </Typography>
-                              <Typography variant="body2" color="text.secondary" paragraph sx={{ mt: 0.5 }}>
+                              <Typography variant="body2" paragraph sx={{ mt: 1 }}>
                                 {session.notes.sharedNotes}
                               </Typography>
                             </Box>
                           )}
+
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => handleViewSessionDetails(session)}
+                            >
+                              View Details
+                            </Button>
+                          </Box>
                         </CardContent>
                       </Card>
                     ))}
@@ -705,57 +829,101 @@ export default function SessionsManagement() {
               </TabPanel>
             </DialogContent>
             
-            <DialogActions>
-              <Button onClick={handleCloseSessionDetails}>Close</Button>
+            <DialogActions sx={{ px: 3, py: 2 }}>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                startIcon={<DeleteOutline />}
+                onClick={() => handleDelete(selectedSession)}
+              >
+                Delete Session
+              </Button>
+              <Button 
+                onClick={handleCloseSessionDetails}
+                variant="contained"
+                disableElevation
+                sx={{
+                  bgcolor: 'black',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'rgba(0, 0, 0, 0.8)',
+                  }
+                }}
+              >
+                Close
+              </Button>
             </DialogActions>
           </>
         )}
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Confirm Deletion</DialogTitle>
+      {/* Delete Session Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        aria-labelledby="delete-dialog-title"
+      >
+        <DialogTitle id="delete-dialog-title">Delete Session</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete this session with {selectedSession?.clientId.fullname}? This action cannot be undone.
+            Are you sure you want to delete this session? This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={confirmDelete} color="error">
+          <Button onClick={confirmDelete} color="error" variant="contained" disableElevation>
             Delete
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Mark as Completed Confirmation Dialog */}
-      <Dialog open={openCompleteDialog} onClose={() => setOpenCompleteDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Mark Session as Completed</DialogTitle>
+      {/* Delete Note Dialog */}
+      <Dialog
+        open={openDeleteNoteDialog}
+        onClose={() => setOpenDeleteNoteDialog(false)}
+        aria-labelledby="delete-note-dialog-title"
+      >
+        <DialogTitle id="delete-note-dialog-title">Delete Note</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to mark this session with {selectedSession?.clientId.fullname} as completed?
+            Are you sure you want to delete this note? This action cannot be undone.
           </Typography>
-          {selectedSession && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {dayjs(selectedSession.scheduledTime).format('YYYY-MM-DD h:mm A')}
-            </Typography>
-          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteNoteDialog(false)}>Cancel</Button>
+          <Button onClick={confirmDeleteNote} color="error" variant="contained" disableElevation>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Complete Session Dialog */}
+      <Dialog
+        open={openCompleteDialog}
+        onClose={() => setOpenCompleteDialog(false)}
+        aria-labelledby="complete-dialog-title"
+      >
+        <DialogTitle id="complete-dialog-title">Complete Session</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to mark this session as completed?
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCompleteDialog(false)}>Cancel</Button>
-          <Button
-            onClick={confirmComplete}
-            variant="contained"
-            color="success"
-            disableElevation
-          >
+          <Button onClick={confirmComplete} color="success" variant="contained" disableElevation>
             Mark as Completed
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Alert Snackbar */}
-      <Snackbar open={alertOpen} autoHideDuration={4000} onClose={handleCloseAlert}>
+      <Snackbar 
+        open={alertOpen} 
+        autoHideDuration={5000} 
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
         <Alert onClose={handleCloseAlert} severity={alertSeverity} sx={{ width: '100%' }}>
           {alertMessage}
         </Alert>

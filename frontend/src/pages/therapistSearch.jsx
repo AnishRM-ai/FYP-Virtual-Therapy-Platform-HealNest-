@@ -166,12 +166,16 @@ const HeroSection = ({ mode, onSearch }) => {
 };
 
 // Therapist Card Component with refined design
+// TherapistCard Component with therapist type categorization
 const TherapistCard = ({
   name,
   rating = 0,
   reviews = 0,
-  degree = '',
+  education = [], // Array of education objects
   license = '',
+  licenseNumber = '',
+  issuedInstitution = '',
+  therapistType = 'specialist', // Default type
   language = [],
   specialties = [],
   sessionPrice = 0,
@@ -182,8 +186,72 @@ const TherapistCard = ({
   const navigate = useNavigate();
   const currentTheme = mode === 'light' ? theme.light : theme.dark;
 
+  // Define category colors for different therapist types
+  const categoryColors = {
+    clinical: {
+      main: '#2E7D32', // Green
+      light: mode === 'light' ? 'rgba(46, 125, 50, 0.08)' : 'rgba(46, 125, 50, 0.15)',
+      text: '#2E7D32'
+    },
+    counselor: {
+      main: '#5C6BC0', // Indigo (original primary color)
+      light: mode === 'light' ? 'rgba(92, 107, 192, 0.08)' : 'rgba(92, 107, 192, 0.15)',
+      text: '#5C6BC0'
+    },
+    coach: {
+      main: '#D81B60', // Pink
+      light: mode === 'light' ? 'rgba(216, 27, 96, 0.08)' : 'rgba(216, 27, 96, 0.15)',
+      text: '#D81B60'
+    },
+    specialist: {
+      main: '#F57C00', // Orange
+      light: mode === 'light' ? 'rgba(245, 124, 0, 0.08)' : 'rgba(245, 124, 0, 0.15)',
+      text: '#F57C00'
+    }
+  };
+
+  // Get colors based on therapist type
+  const typeColor = categoryColors[therapistType] || categoryColors.specialist;
+
   const handleBookSession = () => {
     navigate(`/booking/${therapistId}`);
+  };
+  
+  // Format therapist type for display
+  const getFormattedType = (type) => {
+    switch (type) {
+      case 'clinical': return 'Clinical Therapist';
+      case 'counselor': return 'Counselor';
+      case 'coach': return 'Mental Health Coach';
+      case 'specialist': return 'Mental Health Specialist';
+      default: return 'Mental Health Professional';
+    }
+  };
+
+  // Get the highest degree from education array
+  const getHighestDegree = () => {
+    if (!education || education.length === 0) return 'N/A';
+    
+    // Sort education by year (most recent first)
+    const sortedEducation = [...education].sort((a, b) => (b.year || 0) - (a.year || 0));
+    
+    // Get the most recent degree
+    const recentDegree = sortedEducation[0];
+    
+    return recentDegree.degree || 'N/A';
+  };
+  
+  // Get the most recent institution
+  const getInstitution = () => {
+    if (!education || education.length === 0) return '';
+    
+    // Sort education by year (most recent first)
+    const sortedEducation = [...education].sort((a, b) => (b.year || 0) - (a.year || 0));
+    
+    // Get the most recent institution
+    const recentEducation = sortedEducation[0];
+    
+    return recentEducation.institution || '';
   };
   
   return (
@@ -211,7 +279,7 @@ const TherapistCard = ({
           '&:hover': {
             transform: 'translateY(-5px)',
             boxShadow: mode === 'light'
-              ? '0 12px 28px rgba(92, 107, 192, 0.2)'
+              ? `0 12px 28px rgba(${typeColor.main.replace(/[^\d,]/g, '')}, 0.2)`
               : '0 12px 28px rgba(0,0,0,0.4)'
           }
         }}
@@ -219,19 +287,32 @@ const TherapistCard = ({
         <Box sx={{ 
           height: 8, 
           width: '100%', 
-          bgcolor: currentTheme.primary 
+          bgcolor: typeColor.main 
         }} />
         
         <CardContent sx={{ flexGrow: 1, p: 3 }}>
+          {/* Therapist type chip */}
+          <Chip 
+            label={getFormattedType(therapistType)}
+            size="small"
+            sx={{ 
+              fontSize: '0.75rem',
+              mb: 2,
+              bgcolor: typeColor.light,
+              color: typeColor.text,
+              fontWeight: 500
+            }}
+          />
+        
           <Box sx={{ display: 'flex', mb: 2.5 }}>
             <Avatar
               sx={{
                 width: 80,
                 height: 80,
                 mr: 2.5,
-                bgcolor: currentTheme.primary,
+                bgcolor: typeColor.main,
                 boxShadow: mode === 'light'
-                  ? '0 4px 12px rgba(92, 107, 192, 0.2)'
+                  ? `0 4px 12px rgba(${typeColor.main.replace(/[^\d,]/g, '')}, 0.2)`
                   : '0 4px 12px rgba(0,0,0,0.25)'
               }}
             >
@@ -271,13 +352,70 @@ const TherapistCard = ({
                   variant="body2" 
                   sx={{ color: currentTheme.text.secondary }}
                 >
-                  {degree || 'N/A'} • {license || 'N/A'}
+                  {getHighestDegree()}
+                  {getInstitution() && ` • ${getInstitution()}`}
                 </Typography>
               </Box>
             </Box>
           </Box>
 
+          {/* Education Section */}
+          {education && education.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  mb: 1, 
+                  fontWeight: 600,
+                  color: currentTheme.text.primary
+                }}
+              >
+                Education
+              </Typography>
+              {education.map((edu, idx) => (
+                <Typography 
+                  key={idx}
+                  variant="body2" 
+                  sx={{ 
+                    color: currentTheme.text.secondary,
+                    mb: 0.5
+                  }}
+                >
+                  {edu.degree}{edu.institution ? ` - ${edu.institution}` : ''}{edu.year ? ` (${edu.year})` : ''}
+                </Typography>
+              ))}
+            </Box>
+          )}
+
           <Divider sx={{ my: 2 }} />
+          
+          {/* Display license number and institution only for clinical therapists */}
+          {therapistType === 'clinical' && (
+            <Box sx={{ mb: 2 }}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  mb: 1, 
+                  fontWeight: 600,
+                  color: currentTheme.text.primary
+                }}
+              >
+                License Information
+              </Typography>
+              <Typography 
+                variant="body2"
+                sx={{ color: currentTheme.text.secondary }}
+              >
+                License #: {licenseNumber || 'N/A'}
+              </Typography>
+              <Typography 
+                variant="body2"
+                sx={{ color: currentTheme.text.secondary }}
+              >
+                Issued by: {issuedInstitution || 'N/A'}
+              </Typography>
+            </Box>
+          )}
           
           <Box sx={{ mb: 2 }}>
             <Typography 
@@ -299,8 +437,8 @@ const TherapistCard = ({
                     size="small"
                     sx={{ 
                       fontSize: '0.75rem',
-                      bgcolor: mode === 'light' ? 'rgba(92, 107, 192, 0.1)' : 'rgba(92, 107, 192, 0.2)',
-                      color: currentTheme.primary,
+                      bgcolor: typeColor.light,
+                      color: typeColor.text,
                       fontWeight: 500
                     }}
                   />
@@ -338,7 +476,7 @@ const TherapistCard = ({
               variant="h6" 
               sx={{ 
                 fontWeight: 700,
-                color: currentTheme.primary
+                color: typeColor.main
               }}
             >
               ${sessionPrice}/hour
@@ -350,7 +488,6 @@ const TherapistCard = ({
           <Button
             fullWidth
             variant="contained"
-            color="primary"
             onClick={handleBookSession}
             sx={{ 
               textTransform: 'none',
@@ -358,9 +495,12 @@ const TherapistCard = ({
               borderRadius: 2,
               fontWeight: 600,
               boxShadow: 'none',
+              bgcolor: typeColor.main,
               '&:hover': {
+                bgcolor: typeColor.main,
+                opacity: 0.9,
                 boxShadow: mode === 'light'
-                  ? '0 4px 12px rgba(92, 107, 192, 0.3)'
+                  ? `0 4px 12px rgba(${typeColor.main.replace(/[^\d,]/g, '')}, 0.3)`
                   : '0 4px 12px rgba(0,0,0,0.3)'
               }
             }}
@@ -737,24 +877,27 @@ const TherapistFinder = () => {
               </Box>
             ) : (
               <Grid container spacing={3}>
-                {filteredTherapists.map((therapist, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={therapist._id || `therapist-${index}`}>
-                    <TherapistCard
-                      therapistId={therapist._id}
-                      name={therapist.fullname}
-                      rating={therapist.rating || 0}
-                      reviews={therapist.reviews || 0}
-                      degree={therapist.degree || ''}
-                      language={therapist.language || []}
-                      license={therapist.license || ''}
-                      specialties={therapist.specializations || []}
-                      sessionPrice={therapist.sessionPrice || 0}
-                      mode={mode}
-                      index={index}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
+              {filteredTherapists.map((therapist, index) => (
+                <Grid item xs={12} sm={6} md={4} key={therapist._id || `therapist-${index}`}>
+                  <TherapistCard
+                    therapistId={therapist._id}
+                    name={therapist.fullname}
+                    rating={therapist.rating || 0}
+                    reviews={therapist.reviews || 0}
+                    education={therapist.education || []}
+                    license={therapist.license || ''}
+                    licenseNumber={therapist.licenseNumber || ''}
+                    issuedInstitution={therapist.issuedInstitution || ''}
+                    therapistType={therapist.therapistType || 'specialist'}
+                    language={therapist.language || []}
+                    specialties={therapist.specializations || []}
+                    sessionPrice={therapist.sessionPrice || 0}
+                    mode={mode}
+                    index={index}
+                  />
+                </Grid>
+              ))}
+            </Grid>
             )}
           </>
         )}

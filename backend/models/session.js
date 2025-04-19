@@ -1,5 +1,16 @@
 const mongoose = require('mongoose');
 
+const noteSchema = new mongoose.Schema({
+    content: {
+        type: String,
+        required: true
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+
 const sessionSchema = new mongoose.Schema({
     therapistId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -51,11 +62,12 @@ const sessionSchema = new mongoose.Schema({
         transactionId: String
     },
     notes: {
-        clientNotes: String, // visible to client
-        therapistNotes: String, // private notes for therapist
-        sharedNotes: String
-        
-    },
+        privateNotes: [noteSchema],
+        sharedNotes: {
+            type: String,
+            default: ''
+        }
+        },
     cancellation: {
         reason: String,
         cancelledBy: {

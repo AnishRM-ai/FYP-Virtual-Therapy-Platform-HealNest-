@@ -10,7 +10,7 @@ const Post = require('../models/forumPage');
 const getTherapistsForVerification = async (req, res) => {
     try {
         // Fetch all therapists who are not verified
-        const therapists = await Therapist.find({ isTherapistVerified: false })
+        const therapists = await Therapist.find({ isLicenseVerified: false })
             .select('fullname email avatar specializations education sessionPrice languages qualificationProof');
 
         res.status(200).json({ success: true, therapists });
@@ -25,7 +25,7 @@ const getTherapistsForVerification = async (req, res) => {
  */
 const verifyTherapist = async (req, res) => {
     try {
-        const {therapistId, isTherapistVerified} = req.body;
+        const {therapistId, isLicenseVerified} = req.body;
         
         if (!therapistId) {
             return res.status(400).json({ 
@@ -44,9 +44,9 @@ const verifyTherapist = async (req, res) => {
             });
         }
 
-        if (isTherapistVerified) {
+        if (isLicenseVerified) {
             // Approve the therapist
-            therapist.isTherapistVerified = true;
+            therapist.isLicenseVerified = true;
             await therapist.save();
             
             // notification

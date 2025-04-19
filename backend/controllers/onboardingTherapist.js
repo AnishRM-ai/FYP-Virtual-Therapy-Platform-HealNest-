@@ -1,12 +1,12 @@
 const User = require('../models/User');
-const Availability = require('../models/availability')
+const Availability = require('../models/availability');
 const multer = require('multer');
 const path = require('path');
 
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Save files in the 'uploads' folder
+    cb(null, path.join(__dirname, '/uploads'));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -22,46 +22,58 @@ const upload = multer({ storage }).fields([
 // Onboard Therapist with File Uploads
 const onboardTherapist = async (req, res) => {
   try {
-    // Handle file uploads using Multer
     upload(req, res, async (err) => {
       if (err) {
         return res.status(400).json({ success: false, message: 'File upload failed', error: err.message });
       }
 
       const {
+        therapistType,
+        licenseNumber,
+        licenseIssuer,
+        licenseExpiry,
         specializations,
         education,
         slots,
         sessionPrice,
         languages,
-        paymentDetails,
+        paymentDetails
       } = req.body;
 
-      // Get the authenticated user's ID from the request
       const userId = req.userId;
-
-      // Find the user in the database
       const user = await User.findById(userId);
 
       if (!user) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      // Save file paths to the database
+      // Validate license number for clinical therapists
+      if (therapistType === 'clinical' && !licenseNumber) {
+        return res.status(400).json({
+          success: false,
+          message: 'License number is required for clinical therapists.'
+        });
+      }
+
+      // Set qualification proofs
       user.qualificationProof = {
         resume: req.files['resume'] ? req.files['resume'][0].path : null,
         professionalLicense: req.files['professionalLicense'] ? req.files['professionalLicense'][0].path : null,
       };
 
-      // Update other fields
+      // Set new therapist fields
+      user.therapistType = therapistType;
+      user.licenseNumber = licenseNumber || null;
+      user.licenseIssuer = licenseIssuer || null;
+      user.licenseExpiry = licenseExpiry ? new Date(licenseExpiry) : null;
+
       user.specializations = JSON.parse(specializations);
       user.education = JSON.parse(education);
       user.sessionPrice = JSON.parse(sessionPrice);
       user.languages = JSON.parse(languages);
       user.paymentDetails = JSON.parse(paymentDetails);
-      user.isOnboarded = true; // Mark the user as onboarded
+      user.isOnboarded = true;
 
-      // Save the updated therapist profile
       await user.save();
 
       const availabilityData = JSON.parse(slots);

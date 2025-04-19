@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Paper, Alert, Container, Typography, TextField, Button, Stepper, Step, StepLabel, MenuItem, Select, InputLabel, 
-  FormControl, Box, IconButton, Chip, Checkbox, FormControlLabel, Fade, ThemeProvider, createTheme, CssBaseline
+  FormControl, Box, IconButton, Chip, Checkbox, FormControlLabel, Fade, ThemeProvider, createTheme, CssBaseline,
+  Radio, RadioGroup
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import GoogleIcon from '@mui/icons-material/Google';
@@ -11,6 +12,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import MedicationIcon from '@mui/icons-material/Medication';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import LocalAtmIcon from '@mui/icons-material/LocalAtm';
+import BadgeIcon from '@mui/icons-material/Badge';
 import useOnboardingStore from '../store/onboardingStore.js';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -95,6 +97,7 @@ const theme = createTheme({
 
 const specializationOptions = ['Depression', 'Anxiety', 'Relationship', 'Trauma', 'ADHD', 'Self-Esteem', 'Grief', 'Family Conflict'];
 const languageOptions = ['English', 'Spanish', 'French', 'German', 'Nepali', 'Hindi', 'Mandarin', 'Arabic'];
+const therapistTypes = ['clinical', 'counselor', 'coach', 'mental health specialist'];
 
 // Animation variants
 const pageVariants = {
@@ -112,13 +115,22 @@ const pageTransition = {
 const TherapistOnboarding = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
+    therapistType: 'counselor',
+    licenseNumber: '',
+    licenseIssuer: '',
+    licenseExpiry: '',
     qualificationDocuments: {
       resume: null,
       professionalLicense: null,
     },
     specializations: [],
     education: [{ degree: '', institution: '', year: '' }],
-    slots: [{ startDateTime: '', endDateTime: '', isAvailable: true }],
+    slots: [{ 
+      startDateTime: '', 
+      endDateTime: '', 
+      isAvailable: true,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    }],
     sessionPrice: 0,
     languages: [],
     paymentDetails: { provider: '', customerId: '' },
@@ -132,10 +144,14 @@ const TherapistOnboarding = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('resume', formData.qualificationDocuments.resume);
       formDataToSend.append('professionalLicense', formData.qualificationDocuments.professionalLicense);
+      formDataToSend.append('therapistType', formData.therapistType);
+      formDataToSend.append('licenseNumber', formData.licenseNumber);
+      formDataToSend.append('licenseIssuer', formData.licenseIssuer);
+      formDataToSend.append('licenseExpiry', formData.licenseExpiry);
       formDataToSend.append('specializations', JSON.stringify(formData.specializations));
       formDataToSend.append('education', JSON.stringify(formData.education));
       formDataToSend.append('slots', JSON.stringify(formData.slots));
-      formDataToSend.append('sessionPrice', formData.sessionPrice);
+      formDataToSend.append('sessionPrice', JSON.stringify(formData.sessionPrice));
       formDataToSend.append('languages', JSON.stringify(formData.languages));
       formDataToSend.append('paymentDetails', JSON.stringify(formData.paymentDetails));
 
@@ -234,7 +250,12 @@ const TherapistOnboarding = () => {
   const addNewSlot = () => {
     setFormData((prevData) => ({
       ...prevData,
-      slots: [...prevData.slots, { startDateTime: '', endDateTime: '', isAvailable: true }],
+      slots: [...prevData.slots, { 
+        startDateTime: '', 
+        endDateTime: '', 
+        isAvailable: true,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }],
     }));
   };
 
@@ -264,6 +285,7 @@ const TherapistOnboarding = () => {
   };
 
   const steps = [
+    { label: 'Therapist Type', icon: <BadgeIcon /> },
     { label: 'Qualifications', icon: <MedicationIcon /> },
     { label: 'Specializations', icon: <SchoolIcon /> },
     { label: 'Availability', icon: <CalendarMonthIcon /> },
@@ -273,6 +295,170 @@ const TherapistOnboarding = () => {
   const getStepContent = (step) => {
     switch (step) {
       case 0:
+        return (
+          <motion.div
+            initial="initial"
+            animate="in"
+            exit="out"
+            variants={pageVariants}
+            transition={pageTransition}
+          >
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 4, 
+              my: 4, 
+              p: 3, 
+              borderRadius: 3,
+              backgroundColor: 'background.paper',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
+            }}>
+              <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600, mb: 2 }}>
+                Select Your Therapist Type
+              </Typography>
+              
+              <Paper elevation={0} sx={{ 
+                p: 3, 
+                display: 'flex', 
+                flexDirection: 'column',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'primary.light',
+                backgroundColor: 'rgba(104, 164, 164, 0.05)'
+              }}>
+                <FormControl component="fieldset">
+                  <RadioGroup
+                    name="therapistType"
+                    value={formData.therapistType}
+                    onChange={handleChange}
+                  >
+                    <FormControlLabel 
+                      value="clinical" 
+                      control={<Radio color="primary" />} 
+                      label={
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={500}>
+                            Clinical Therapist
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Licensed therapists with formal qualifications to diagnose and treat mental health conditions
+                          </Typography>
+                        </Box>
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                    
+                    <FormControlLabel 
+                      value="counselor" 
+                      control={<Radio color="primary" />} 
+                      label={
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={500}>
+                            Counselor
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Trained to provide counseling services and support for various life challenges
+                          </Typography>
+                        </Box>
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                    
+                    <FormControlLabel 
+                      value="coach" 
+                      control={<Radio color="primary" />} 
+                      label={
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={500}>
+                            Mental Health Coach
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Provides guidance and accountability for mental wellbeing goals
+                          </Typography>
+                        </Box>
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                    
+                    <FormControlLabel 
+                      value="mental health specialist" 
+                      control={<Radio color="primary" />} 
+                      label={
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={500}>
+                            Mental Health Specialist
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Other mental health professionals such as psychiatric nurses or social workers
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </RadioGroup>
+                </FormControl>
+              </Paper>
+              
+              {(formData.therapistType === 'clinical' || formData.therapistType === 'counselor') && (
+                <Paper elevation={0} sx={{ 
+                  p: 3, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'primary.light',
+                  backgroundColor: 'rgba(104, 164, 164, 0.05)'
+                }}>
+                  <Typography variant="subtitle1" fontWeight={500} sx={{ mb: 3 }}>
+                    License Information
+                  </Typography>
+                  
+                  <TextField
+                    name="licenseNumber"
+                    label="License Number"
+                    value={formData.licenseNumber}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                    required={formData.therapistType === 'clinical'}
+                    helperText={formData.therapistType === 'clinical' ? "Required for clinical therapists" : "Optional for counselors"}
+                    sx={{ mb: 2 }}
+                  />
+                  
+                  <TextField
+                    name="licenseIssuer"
+                    label="Licensing Body/Authority"
+                    value={formData.licenseIssuer}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                    sx={{ mb: 2 }}
+                  />
+                  
+                  <TextField
+                    name="licenseExpiry"
+                    label="License Expiry Date"
+                    type="date"
+                    value={formData.licenseExpiry}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                  />
+                </Paper>
+              )}
+              
+              <Alert severity="info" sx={{ 
+                borderRadius: 2, 
+                '& .MuiAlert-icon': { color: 'primary.main' } 
+              }}>
+                Different therapist types have different verification requirements. Clinical therapists must provide license details.
+              </Alert>
+            </Box>
+          </motion.div>
+        );
+      case 1:
         return (
           <motion.div
             initial="initial"
@@ -405,7 +591,7 @@ const TherapistOnboarding = () => {
             </Box>
           </motion.div>
         );
-      case 1:
+      case 2:
         return (
           <motion.div
             initial="initial"
@@ -563,7 +749,7 @@ const TherapistOnboarding = () => {
             </Box>
           </motion.div>
         );
-      case 2:
+      case 3:
         return (
           <motion.div
             initial="initial"
@@ -668,99 +854,125 @@ const TherapistOnboarding = () => {
                         mb: 3, 
                         borderRadius: 2,
                         border: '1px solid',
-                        borderColor: slot.isAvailable ? 'success.light' : 'text.disabled',
-                        backgroundColor: slot.isAvailable ? 'rgba(129, 199, 132, 0.05)' : 'rgba(0, 0, 0, 0.02)'
+                        borderColor: 'primary.light',
+                        backgroundColor: 'rgba(104, 164, 164, 0.05)'
                       }}
                     >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                         <Typography variant="subtitle1" fontWeight={500}>
                           Availability Slot {slotIndex + 1}
                         </Typography>
-                        {formData.slots.length > 1 && (
-                          <Button 
-                            color="error" 
-                            size="small" 
-                            onClick={() => removeSlot(slotIndex)}
-                            sx={{ minWidth: 'auto', p: 1 }}
-                          >
-                            Remove
-                          </Button>
-                        )}
+                        <IconButton
+                          onClick={() => removeSlot(slotIndex)}
+                          color="error"
+                          disabled={formData.slots.length <= 1}
+                          sx={{ opacity: formData.slots.length > 1 ? 1 : 0.5 }}
+                        >
+                          <LightModeIcon />
+                        </IconButton>
                       </Box>
-                      
-                      <TextField
-                        name="startDateTime"
-                        label="Start Date & Time"
-                        type="datetime-local"
-                        value={slot.startDateTime}
-                        onChange={(e) => handleAvailabilityChange(slotIndex, e)}
-                        fullWidth
-                        margin="normal"
-                        InputLabelProps={{
-                          shrink: true,
-                        }}
-                        sx={{ mb: 2 }}
-                      />
-                      <TextField
-                        name="endDateTime"
-                        label="End Date & Time"
-                        type="datetime-local"
-                        value={slot.endDateTime}
-                        onChange={(e) => handleAvailabilityChange(slotIndex, e)}
-                        fullWidth
-                        margin="normal"
-                        InputLabelProps={{
-                          shrink: true,
-                        }}
-                        sx={{ mb: 2 }}
-                      />
+
+                      <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mb={2}>
+                        <TextField
+                          name="startDateTime"
+                          label="Start Date & Time"
+                          type="datetime-local"
+                          value={slot.startDateTime}
+                          onChange={(e) => handleAvailabilityChange(slotIndex, e)}
+                          fullWidth
+                          InputLabelProps={{
+                            shrink: true,
+                          }}
+                        />
+                        <TextField
+                          name="endDateTime"
+                          label="End Date & Time"
+                          type="datetime-local"
+                          value={slot.endDateTime}
+                          onChange={(e) => handleAvailabilityChange(slotIndex, e)}
+                          fullWidth
+                          InputLabelProps={{
+                            shrink: true,
+                          }}
+                        />
+                      </Box>
+
                       <FormControlLabel
                         control={
                           <Checkbox
                             checked={slot.isAvailable}
-                            onChange={(e) =>
-                              handleAvailabilityChange(slotIndex, {
-                                target: { name: 'isAvailable', value: e.target.checked },
-                              })
-                            }
-                            sx={{
-                              color: 'primary.main',
-                              '&.Mui-checked': {
-                                color: 'success.main',
-                              },
+                            onChange={(e) => {
+                              const updatedSlots = [...formData.slots];
+                              updatedSlots[slotIndex].isAvailable = e.target.checked;
+                              setFormData((prevData) => ({
+                                ...prevData,
+                                slots: updatedSlots,
+                              }));
                             }}
+                            color="primary"
                           />
                         }
-                        label="Available for Booking"
+                        label="This slot is available for booking"
                       />
                     </Paper>
                   </motion.div>
                 ))}
               </AnimatePresence>
-              
-              <Button 
-                variant="outlined" 
+
+              <Button
+                variant="outlined"
                 onClick={addNewSlot}
                 sx={{ 
-                  mt: 1,
+                  mt: 2,
                   borderRadius: 8,
                   borderColor: 'primary.main',
                   color: 'primary.dark',
                   '&:hover': {
                     borderColor: 'primary.dark',
                     backgroundColor: 'rgba(104, 164, 164, 0.1)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-                  },
-                  transition: 'all 0.3s ease'
+                  }
                 }}
               >
-                + Add New Availability Slot
+                + Add Another Time Slot
               </Button>
+
+              <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600, mt: 3, mb: 2 }}>
+                Session Pricing
+              </Typography>
+
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'primary.light',
+                  backgroundColor: 'rgba(104, 164, 164, 0.05)'
+                }}
+              >
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  Set your price per session (45-50 minutes)
+                </Typography>
+                <TextField
+                  name="sessionPrice"
+                  label="Session Price (USD)"
+                  type="number"
+                  value={formData.sessionPrice}
+                  onChange={handleChange}
+                  fullWidth
+                  InputProps={{
+                    startAdornment: <LocalAtmIcon color="action" sx={{ mr: 1 }} />,
+                  }}
+                  inputProps={{
+                    min: 0,
+                    step: 5,
+                  }}
+                />
+              </Paper>
             </Box>
           </motion.div>
         );
-      case 3:
+      case 4:
         return (
           <motion.div
             initial="initial"
@@ -779,110 +991,102 @@ const TherapistOnboarding = () => {
               backgroundColor: 'background.paper',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
             }}>
-              <Box>
-                <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600, mb: 2 }}>
-                  Session Pricing
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                  Set your standard session rate. You can offer sliding scale options in your profile later.
-                </Typography>
-                
-                <Paper elevation={0} sx={{ 
+              <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600, mb: 2 }}>
+                Payment Setup
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                To receive payments from your clients, please set up your payment details
+              </Typography>
+
+              <Paper 
+                elevation={0} 
+                sx={{ 
                   p: 3, 
-                  mb: 4, 
+                  mb: 4,
                   borderRadius: 2,
                   border: '1px solid',
                   borderColor: 'primary.light',
                   backgroundColor: 'rgba(104, 164, 164, 0.05)'
-                }}>
-                  <TextField
-                    name="sessionPrice"
-                    label="Session Price ($)"
-                    type="number"
-                    value={formData.sessionPrice}
-                    onChange={handleChange}
-                    fullWidth
-                    InputProps={{
-                      startAdornment: (
-                        <Typography variant="h6" color="primary.main" sx={{ mr: 1 }}>
-                          $
-                        </Typography>
-                      ),
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight={500} sx={{ mb: 3 }}>
+                  Payment Provider
+                </Typography>
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel id="payment-provider-label">Select Payment Provider</InputLabel>
+                  <Select
+                    labelId="payment-provider-label"
+                    name="provider"
+                    value={formData.paymentDetails.provider}
+                    onChange={(e) => {
+                      setFormData((prevData) => ({
+                        ...prevData,
+                        paymentDetails: {
+                          ...prevData.paymentDetails,
+                          provider: e.target.value,
+                        },
+                      }));
                     }}
-                    sx={{ mb: 2 }}
-                  />
-                  <Typography variant="body2" color="text.secondary">
-                    This is the standard 50-minute session rate that clients will see on your profile
-                  </Typography>
-                </Paper>
-              </Box>
-              
-              <Box>
-                <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600, mb: 2 }}>
-                  Payment Processing
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                  Connect your payment processor to receive client payments
-                </Typography>
-                
-                <Paper elevation={0} sx={{ 
-                  p: 3, 
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'primary.light',
-                  backgroundColor: 'rgba(104, 164, 164, 0.05)'
-                }}>
-                  <FormControl fullWidth margin="normal" sx={{ mb: 3 }}>
-                    <InputLabel id="payment-provider-label">Payment Provider</InputLabel>
-                    <Select
-                      labelId="payment-provider-label"
-                      id="payment-provider"
-                      name="provider"
-                      value={formData.paymentDetails.provider}
-                      onChange={(e) => setFormData((prevData) => ({ 
-                        ...prevData, 
-                        paymentDetails: { 
-                          ...prevData.paymentDetails, 
-                          provider: e.target.value 
-                        } 
-                      }))}
-                      sx={{ borderRadius: 2 }}
-                    >
-                      <MenuItem value="">Select a provider</MenuItem>
-                      <MenuItem value="Khalti">Khalti</MenuItem>
-                      <MenuItem value="Esewa">Esewa</MenuItem>
-                    </Select>
-                  </FormControl>
-                  
-                  <Fade in={Boolean(formData.paymentDetails.provider)}>
+                    label="Select Payment Provider"
+                  >
+                    <MenuItem value="Khalti">Khalti</MenuItem>
+                    <MenuItem value="Esewa">Esewa</MenuItem>
+                    
+                  </Select>
+                </FormControl>
+
+                {formData.paymentDetails.provider && (
+                  <Fade in={formData.paymentDetails.provider !== ''}>
                     <TextField
+                      label={
+                        formData.paymentDetails.provider === 'Khalti'
+                          ? 'Khalti Account ID'
+                          : formData.paymentDetails.provider === 'Esewa'
+                          ? 'Esewa Email'
+                          : 'Bank Account Details'
+                      }
                       name="customerId"
-                      label={formData.paymentDetails.provider === 'Stripe' ? 'Stripe Account ID' : 'PayPal Email'}
                       value={formData.paymentDetails.customerId}
-                      onChange={(e) => setFormData((prevData) => ({ 
-                        ...prevData, 
-                        paymentDetails: { 
-                          ...prevData.paymentDetails, 
-                          customerId: e.target.value 
-                        } 
-                      }))}
+                      onChange={(e) => {
+                        setFormData((prevData) => ({
+                          ...prevData,
+                          paymentDetails: {
+                            ...prevData.paymentDetails,
+                            customerId: e.target.value,
+                          },
+                        }));
+                      }}
                       fullWidth
-                      margin="normal"
+                      multiline={formData.paymentDetails.provider === 'bank_transfer'}
+                      rows={formData.paymentDetails.provider === 'bank_transfer' ? 4 : 1}
                       helperText={
-                        formData.paymentDetails.provider === 'Stripe' 
-                          ? "You can find your Stripe Account ID in your Stripe Dashboard" 
-                          : "Enter the email associated with your PayPal account"
+                        formData.paymentDetails.provider === 'stripe'
+                          ? 'Enter your Stripe Account ID'
+                          : formData.paymentDetails.provider === 'paypal'
+                          ? 'Enter the email associated with your PayPal account'
+                          : 'Enter your complete bank account details including account number, routing number, and bank name'
                       }
                     />
                   </Fade>
-                </Paper>
-                
-                <Alert severity="info" sx={{ 
-                  mt: 3, 
-                  borderRadius: 2, 
-                  '& .MuiAlert-icon': { color: 'primary.main' } 
-                }}>
-                  HealNest takes a 10% platform fee from each session payment. You'll receive the remaining 90% within 2 business days of each completed session.
+                )}
+              </Paper>
+
+              <Alert severity="info" sx={{ 
+                borderRadius: 2, 
+                '& .MuiAlert-icon': { color: 'primary.main' } 
+              }}>
+                Your payment information is encrypted and secured. You will be able to update these details anytime from your profile settings.
+              </Alert>
+
+              <Box mt={4} textAlign="center">
+                <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600, mb: 2 }}>
+                  Review & Finalize
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  You've completed all the required steps! Please review your information before submitting.
+                </Typography>
+                <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+                  Once submitted, your profile will enter our verification process. This typically takes 1-3 business days.
                 </Alert>
               </Box>
             </Box>
@@ -896,192 +1100,66 @@ const TherapistOnboarding = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container 
-        maxWidth="md" 
-        sx={{ 
-          minHeight: '100vh', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          py: 4,
-          backgroundColor: 'background.default'
-        }}
-      >
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 4, 
-            mb: 4, 
-            borderRadius: 3, 
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #f7f9fb 0%, #e8f4f4 100%)'
-          }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <motion.div
-              initial={{ rotate: -10, scale: 0.8 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ duration: 0.8, type: "spring" }}
-            >
-              <LightModeIcon sx={{ fontSize: 48, color: 'primary.main', mr: 1 }} />
-            </motion.div>
+      <Container maxWidth="md" sx={{ py: 8 }}>
+        <Paper elevation={3} sx={{ borderRadius: 4, overflow: 'hidden' }}>
+          <Box sx={{ bgcolor: 'primary.light', p: 4, textAlign: 'center' }}>
+            <Typography variant="h4" color="primary.dark" sx={{ fontWeight: 700, mb: 1 }}>
+              Therapist Onboarding
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Welcome to HealNest! Let's set up your therapist profile to start helping clients.
+            </Typography>
           </Box>
-          <Typography variant="h4" gutterBottom align='center' color="primary.dark" sx={{ fontWeight: 600 }}>
-            Join Our Healing Community
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '70%', mx: 'auto' }}>
-            We're excited to welcome you to HealNest. Complete your profile to start connecting with clients seeking your expertise.
-          </Typography>
-        </Paper>
-        
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 0, 
-            borderRadius: 3, 
-            overflow: 'hidden',
-            backgroundColor: 'background.paper'
-          }}
-        >
-          <Box sx={{ 
-            p: 3, 
-            backgroundColor: 'primary.light', 
-            borderTopLeftRadius: 12, 
-            borderTopRightRadius: 12 
-          }}>
-            <Stepper activeStep={activeStep} alternativeLabel>
+
+          <Box sx={{ p: { xs: 2, sm: 4 } }}>
+            <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
               {steps.map((step, index) => (
                 <Step key={step.label}>
                   <StepLabel
                     StepIconProps={{
-                      sx: {
-                        color: activeStep === index ? 'primary.dark' : 'primary.light',
-                      }
+                      icon: step.icon,
                     }}
                   >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          color: activeStep === index ? 'primary.dark' : 'text.secondary',
-                          fontWeight: activeStep === index ? 600 : 400 
-                        }}
-                      >
-                        {step.label}
-                      </Typography>
-                    </Box>
+                    {step.label}
                   </StepLabel>
                 </Step>
               ))}
             </Stepper>
-          </Box>
-          
-          <Box sx={{ p: 0 }}>
-            {activeStep === steps.length ? (
-              <motion.div
-                initial="initial"
-                animate="in"
-                variants={pageVariants}
-                transition={pageTransition}
+
+            <AnimatePresence mode="wait">
+              {getStepContent(activeStep)}
+            </AnimatePresence>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+              <Button
+                disabled={activeStep === 0}
+                onClick={handleBack}
+                sx={{ 
+                  borderRadius: 8,
+                  borderColor: 'primary.main',
+                  color: 'primary.dark'
+                }}
               >
-                <Box 
-                  sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    p: 6,
-                    textAlign: 'center'
-                  }}
-                >
-                  <motion.div
-                    initial={{ scale: 0, rotate: 180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.8, type: "spring" }}
-                  >
-                    <Box 
-                      sx={{ 
-                        width: 80, 
-                        height: 80, 
-                        borderRadius: '50%', 
-                        backgroundColor: 'success.light',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mb: 3
-                      }}
-                    >
-                      <Typography variant="h2" color="white">✓</Typography>
-                    </Box>
-                  </motion.div>
-                  
-                  <Typography variant="h5" gutterBottom color="primary.dark" sx={{ fontWeight: 600 }}>
-                    Thank you for completing the onboarding process!
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: '80%' }}>
-                    Your profile is now being reviewed by our team. Once approved, you'll be able to start connecting with clients seeking support.
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    color="primary"
-                    onClick={() => navigate('/therapist-dashboard')}
-                    sx={{
-                      px: 4,
-                      py: 1.5,
-                      borderRadius: 8,
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 12px rgba(104, 164, 164, 0.25)'
-                      }
-                    }}
-                  >
-                    Go to Dashboard
-                  </Button>
-                </Box>
-              </motion.div>
-            ) : (
-              <div>
-                <AnimatePresence mode="wait">
-                  {getStepContent(activeStep)}
-                </AnimatePresence>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 3 }}>
-                  <Button 
-                    disabled={activeStep === 0} 
-                    onClick={handleBack}
-                    sx={{
-                      color: 'text.secondary',
-                      '&:hover': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.05)'
-                      }
-                    }}
-                  >
-                    Back
-                  </Button>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button 
-                      variant="contained" 
-                      color="primary" 
-                      onClick={handleNext}
-                      sx={{
-                        px: 4,
-                        py: 1.5,
-                        borderRadius: 8,
-                        transition: 'all 0.3s ease',
-                        boxShadow: '0 4px 10px rgba(104, 164, 164, 0.2)',
-                        '&:hover': {
-                          boxShadow: '0 6px 12px rgba(104, 164, 164, 0.25)'
-                        }
-                      }}
-                    >
-                      {activeStep === steps.length - 1 ? 'Complete Onboarding' : 'Continue'}
-                    </Button>
-                  </motion.div>
-                </Box>
-              </div>
-            )}
+                Back
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                sx={{
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  borderRadius: 8,
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                  },
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
+              </Button>
+            </Box>
           </Box>
         </Paper>
       </Container>

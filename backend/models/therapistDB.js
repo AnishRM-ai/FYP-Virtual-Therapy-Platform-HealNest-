@@ -10,7 +10,25 @@ const therapistSchema = new mongoose.Schema(
             type: String,
            },
         },
-        isTherapistVerified: {
+
+        therapistType: {
+            type:String,
+            // required: true,
+        },
+        licenseNumber:{
+            type: String,
+            required: function() {
+                return this.therapistType === "clinical";
+            },
+        },
+        licenseIssuer:{
+            type:String,
+        },
+        licenseExpiry:{
+            type:Date,
+        },
+
+        isLicenseVerified: {
             type: Boolean,
             default: false,
         },
