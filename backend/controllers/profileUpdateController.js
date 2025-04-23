@@ -9,7 +9,7 @@ const multer = require('multer');
 // Configure multer storage for avatar uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '/uploads/avatars');
+    const uploadDir = path.join(__dirname, '../uploads/avatar');
     
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
@@ -181,14 +181,14 @@ const userProfileController = {
         
         // If user already has an avatar, delete the old one
         if (user.avatar) {
-          const oldAvatarPath = path.join(__dirname, '/uploads/avatars', path.basename(user.avatar));
+          const oldAvatarPath = path.join(__dirname, '../uploads/avatars', path.basename(user.avatar));
           if (fs.existsSync(oldAvatarPath)) {
             fs.unlinkSync(oldAvatarPath);
           }
         }
         
         // Set new avatar path (relative to public folder)
-        user.avatar = `/uploads/avatars/${req.file.filename}`;
+        user.avatar = `../uploads/avatars/${req.file.filename}`;
         await user.save();
         
         res.status(200).json({

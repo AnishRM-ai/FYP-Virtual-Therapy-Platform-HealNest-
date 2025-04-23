@@ -6,7 +6,7 @@ const path = require('path');
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '/uploads'));
+    cb(null, path.join(__dirname, '../uploads/docs'));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -57,10 +57,10 @@ const onboardTherapist = async (req, res) => {
 
       // Set qualification proofs
       user.qualificationProof = {
-        resume: req.files['resume'] ? req.files['resume'][0].path : null,
-        professionalLicense: req.files['professionalLicense'] ? req.files['professionalLicense'][0].path : null,
+        resume: req.files['resume'] ? `uploads/docs/${path.basename(req.files['resume'][0].path)}` : null,
+        professionalLicense: req.files['professionalLicense'] ? `uploads/docs/${path.basename(req.files['professionalLicense'][0].path)}` : null,
       };
-
+      
       // Set new therapist fields
       user.therapistType = therapistType;
       user.licenseNumber = licenseNumber || null;

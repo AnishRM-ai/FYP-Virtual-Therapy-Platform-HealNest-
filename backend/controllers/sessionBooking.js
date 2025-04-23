@@ -320,13 +320,58 @@ const getSessionDetails = async (req, res) => {
     }
 };
 
+// For shared notes (string field)
+const updateSharedNotes = async (req, res) => {
+    const { sessionId } = req.params;
+    const { sharedNotes } = req.body;
+    const therapistId = req.userId;
+    
+    try {
+        if (!sharedNotes || typeof sharedNotes !== 'string') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Shared notes content is required' 
+            });
+        }
+        
+        // Encrypt and stringify
+        const encryptedContent = encrypt(sharedNotes);
+        
+        const session = await Session.findOneAndUpdate(
+            { _id: sessionId, therapistId },
+            { $set: { 'notes.sharedNotes': encryptedContent }},
+            { new: true, runValidators: true }
+        ).populate('clientId', 'fullname email');
+
+        if (!session) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Session not found or unauthorized access' 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Shared notes updated securely',
+            session: session
+        });
+    } catch (error) {
+        console.error('Error updating shared notes:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message 
+        });
+    }
+};
+
+// For private notes (array of notes)
 const updatePrivateNotes = async (req, res) => {
     const { sessionId } = req.params;
     const { content } = req.body;
     const therapistId = req.userId;
     
     try {
-        // Validate content
         if (!content || typeof content !== 'string') {
             return res.status(400).json({ 
                 success: false, 
@@ -334,9 +379,11 @@ const updatePrivateNotes = async (req, res) => {
             });
         }
         
-        // Create a new note object
+        // Encrypt and stringify
+        const encryptedContent = encrypt(content);
+        
         const newNote = {
-            content: content,
+            content: encryptedContent, // This is a string
             createdAt: new Date()
         };
         
@@ -355,7 +402,7 @@ const updatePrivateNotes = async (req, res) => {
 
         res.status(200).json({ 
             success: true, 
-            message: 'Private note added successfully',
+            message: 'Private note added securely',
             session: session
         });
     } catch (error) {
@@ -363,59 +410,18 @@ const updatePrivateNotes = async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Internal server error',
-            error: error.message
+            error: error.message 
         });
     }
 };
 
-const updateSharedNotes = async (req, res) => {
-    const { sessionId } = req.params;
-    const { sharedNotes } = req.body;
-    const therapistId = req.userId;
-    
-    try {
-        if (!sharedNotes || typeof sharedNotes !== 'string') {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Shared notes content is required' 
-            });
-        }
-        
-        const session = await Session.findOneAndUpdate(
-            { _id: sessionId, therapistId },
-            { $set: { 'notes.sharedNotes': sharedNotes }},
-            { new: true, runValidators: true }
-        ).populate('clientId', 'fullname email');
-
-        if (!session) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Session not found or unauthorized access' 
-            });
-        }
-
-        res.status(200).json({ 
-            success: true, 
-            message: 'Shared notes updated successfully',
-            session: session
-        });
-    } catch (error) {
-        console.error('Error updating shared notes:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Internal server error',
-            error: error.message
-        });
-    }
-};
-
+// For getting notes
 const getSessionNotes = async (req, res) => {
     const { sessionId } = req.params;
     const userId = req.userId;
     
     try {
         const session = await Session.findById(sessionId)
-            .select('notes scheduledTime status clientId therapistId')
             .populate('clientId', 'fullname email')
             .populate('therapistId', 'fullname email');
 
@@ -426,7 +432,6 @@ const getSessionNotes = async (req, res) => {
             });
         }
 
-        // Check if user is either the therapist or client for this session
         const isTherapist = session.therapistId._id.toString() === userId;
         const isClient = session.clientId._id.toString() === userId;
 
@@ -437,62 +442,51 @@ const getSessionNotes = async (req, res) => {
             });
         }
 
-        // Return appropriate notes based on user role
-        const notesResponse = {
-            sharedNotes: session.notes.sharedNotes,
-            // Only return private notes if user is the therapist
-            privateNotes: isTherapist ? session.notes.privateNotes : undefined,
-            sessionDetails: {
-                scheduledTime: session.scheduledTime,
-                status: session.status,
-                clientId: session.clientId,
-                therapistId: session.therapistId
+        // Decrypt shared notes
+        let decryptedSharedNotes = '';
+        if (session.notes.sharedNotes) {
+            try {
+                decryptedSharedNotes = decrypt(session.notes.sharedNotes);
+            } catch (error) {
+                console.error('Decryption failed for shared notes:', error);
+                decryptedSharedNotes = '[Secure content unavailable]';
             }
-        };
+        }
+
+        // Decrypt private notes if therapist
+        let decryptedPrivateNotes = [];
+        if (isTherapist && session.notes.privateNotes) {
+            decryptedPrivateNotes = session.notes.privateNotes.map(note => {
+                try {
+                    return {
+                        ...note.toObject(),
+                        content: decrypt(note.content),
+                        encryptedContent: note.content // Keep original for reference
+                    };
+                } catch (error) {
+                    console.error('Decryption failed for private note:', error);
+                    return {
+                        ...note.toObject(),
+                        content: '[Secure content unavailable]',
+                        decryptionError: true
+                    };
+                }
+            });
+        }
 
         res.status(200).json({ 
             success: true, 
-            notes: notesResponse
+            notes: {
+                sharedNotes: decryptedSharedNotes,
+                privateNotes: isTherapist ? decryptedPrivateNotes : undefined
+            }
         });
     } catch (error) {
         console.error('Error fetching session notes:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Internal server error',
-            error: error.message
-        });
-    }
-};
-
-const deletePrivateNote = async (req, res) => {
-    const { sessionId, noteId } = req.params;
-    const therapistId = req.userId;
-    
-    try {
-        const session = await Session.findOneAndUpdate(
-            { _id: sessionId, therapistId },
-            { $pull: { 'notes.privateNotes': { _id: noteId } }},
-            { new: true }
-        );
-
-        if (!session) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Session not found or unauthorized access' 
-            });
-        }
-
-        res.status(200).json({ 
-            success: true, 
-            message: 'Private note deleted successfully',
-            session: session
-        });
-    } catch (error) {
-        console.error('Error deleting private note:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Internal server error',
-            error: error.message
+            error: error.message 
         });
     }
 };
@@ -505,19 +499,31 @@ const updateSessionNotes = async (req, res) => {
     try {
         // Initialize update object
         const updateOperations = {};
+        const now = new Date();
         
         // Handle private notes (add to array)
         if (privateNote && typeof privateNote === 'string') {
+            const encryptedContent = encrypt(privateNote);
             const newNote = {
-                content: privateNote,
-                createdAt: new Date()
+                content: encryptedContent, // Store as encrypted string
+                createdAt: now
             };
             updateOperations['$push'] = { 'notes.privateNotes': newNote };
         }
         
         // Handle shared notes (replace entire string)
-        if (sharedNotes !== undefined) {
-            updateOperations['$set'] = { 'notes.sharedNotes': sharedNotes };
+        if (sharedNotes !== undefined && typeof sharedNotes === 'string') {
+            const encryptedContent = encrypt(sharedNotes);
+            updateOperations['$set'] = { 
+                'notes.sharedNotes': encryptedContent,
+                'updatedAt': now 
+            };
+        } else if (sharedNotes !== undefined) {
+            // Handle case where sharedNotes is not a string
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Shared notes must be a string' 
+            });
         }
         
         // If no valid updates, return early
@@ -531,7 +537,11 @@ const updateSessionNotes = async (req, res) => {
         const session = await Session.findOneAndUpdate(
             { _id: sessionId, therapistId },
             updateOperations,
-            { new: true, runValidators: true }
+            { 
+                new: true, 
+                runValidators: true,
+                timestamps: false // We're managing timestamps manually
+            }
         ).populate('clientId', 'fullname email');
 
         if (!session) {
@@ -543,15 +553,41 @@ const updateSessionNotes = async (req, res) => {
 
         res.status(200).json({ 
             success: true, 
-            message: 'Session notes updated successfully',
-            session: session
+            message: 'Session notes updated securely',
+            session: {
+                ...session.toObject(),
+                // Don't return encrypted content in response
+                notes: {
+                    privateNotes: session.notes.privateNotes?.length || 0,
+                    sharedNotes: !!session.notes.sharedNotes
+                }
+            }
         });
     } catch (error) {
         console.error('Error updating session notes:', error);
+        
+        // Handle specific encryption errors
+        if (error.message.includes('encryption')) {
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Security processing error',
+                error: 'Could not secure the notes' 
+            });
+        }
+
+        // Handle Mongoose validation errors
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid data format',
+                error: error.message 
+            });
+        }
+
         res.status(500).json({ 
             success: false, 
             message: 'Internal server error',
-            error: error.message
+            error: error.message 
         });
     }
 };

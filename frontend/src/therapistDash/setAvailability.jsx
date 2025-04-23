@@ -55,7 +55,7 @@ const AvailabilitySection = () => {
     loading,
     error,
     therapist,
-    fetchAuthenticatedAvailability,
+    fetchAuthenticatedAvailability=[],
     addUpdateAvailability,
     deleteAvailability
   } = useTherapistStore();
@@ -88,8 +88,8 @@ const AvailabilitySection = () => {
   });
 
   // Extract the authenticated therapist's availability slots
-  const therapistAvailability = therapist && availability[therapist._id] ? availability[therapist._id] : null;
-  const slots = therapistAvailability && therapistAvailability.slots ? therapistAvailability.slots : [];
+  const therapistAvailability = therapist && availability[therapist._id] ? availability[therapist._id] : {slots: []};
+  const slots = Array.isArray(therapistAvailability.slots) ? therapistAvailability.slots : [];
 
   // Function to handle opening the create modal
   const handleOpenCreateModal = () => {
@@ -193,7 +193,7 @@ const AvailabilitySection = () => {
       });
       
       // Refresh the availability data
-      fetchAuthenticatedAvailability();
+      fetchAuthenticatedAvailability(therapist._id);
     } catch (error) {
       console.error('Error syncing with Google Calendar:', error);
       setSyncInProgress(false);
@@ -340,33 +340,181 @@ const AvailabilitySection = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const drawerWidth = 240;
+
   // Availability section content
   return (
     <Grid item xs={12} md={6}>
-      <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-            Available Time Slots
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Tooltip title={googleConnected ? "Sync with Google Calendar" : "Connect Google Calendar"}>
-              <Button
-                variant="outlined"
-                startIcon={googleConnected ? <SyncIcon /> : <GoogleIcon />}
-                onClick={googleConnected ? handleOpenImportModal : handleGoogleCalendarConnect}
-                sx={{
-                  borderColor: googleConnected ? 'success.main' : 'primary.main',
-                  color: googleConnected ? 'success.main' : 'primary.main',
-                  '&:hover': {
-                    backgroundColor: googleConnected ? 'rgba(46, 125, 50, 0.04)' : 'rgba(0, 0, 0, 0.04)',
-                    borderColor: googleConnected ? 'success.dark' : 'primary.dark',
-                  }
-                }}
-              >
-                {googleConnected ? "Sync Calendar" : "Connect Google"}
-              </Button>
-            </Tooltip>
+    <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+          Available Time Slots
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Tooltip title={googleConnected ? "Sync with Google Calendar" : "Connect Google Calendar"}>
+            <Button
+              variant="outlined"
+              startIcon={googleConnected ? <SyncIcon /> : <GoogleIcon />}
+              onClick={googleConnected ? handleOpenImportModal : handleGoogleCalendarConnect}
+              sx={{
+                borderColor: googleConnected ? 'success.main' : 'primary.main',
+                color: googleConnected ? 'success.main' : 'primary.main',
+                '&:hover': {
+                  backgroundColor: googleConnected ? 'rgba(46, 125, 50, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                  borderColor: googleConnected ? 'success.dark' : 'primary.dark',
+                }
+              }}
+            >
+              {googleConnected ? "Sync Calendar" : "Connect Google"}
+            </Button>
+          </Tooltip>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenCreateModal}
+            sx={{
+              bgcolor: 'primary.main',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+              }
+            }}
+          >
+            Add Slot
+          </Button>
+        </Box>
+      </Box>
+
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+      {error && <Typography color="error">{error}</Typography>}
+
+      {!loading && !error && slots.length > 0 ? (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+          {slots.map((slot, index) => (
+            <Card
+              key={index}
+              sx={{
+                minWidth: 120,
+                maxWidth: 150,
+                boxShadow: 2,
+                border: "1px solid",
+                borderColor: slot.isAvailable ? "primary.light" : "grey.300",
+                borderRadius: 2,
+                transition: "transform 0.2s, box-shadow 0.2s",
+                cursor: "pointer",
+                "&:hover": {
+                  transform: "translateY(-3px)",
+                  boxShadow: 4,
+                  borderColor: slot.isAvailable ? "primary.main" : "grey.400"
+                },
+                position: "relative",
+                opacity: slot.isAvailable ? 1 : 0.75
+              }}
+              onClick={() => handleOpenUpdateModal(slot)}
+            >
+              <CardContent sx={{ textAlign: "center", p: 1.5, "&:last-child": { pb: 1.5 } }}>
+                <Box sx={{
+                  backgroundColor: slot.isAvailable ? "primary.light" : "grey.200",
+                  py: 0.5,
+                  borderRadius: 1,
+                  mb: 1.5,
+                  color: slot.isAvailable ? "primary.dark" : "text.secondary"
+                }}>
+                  <Typography variant="body2" fontWeight="bold">
+                    {dayjs(slot.startDateTime).format("MMM D, YYYY")}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", mb: 0.5 }}>
+                  <AccessTimeOutlined sx={{ fontSize: 16, mr: 0.5, color: "text.secondary" }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {dayjs(slot.startDateTime).format("HH:mm")} - {dayjs(slot.endDateTime).format("HH:mm")}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" sx={{
+                  display: "inline-block",
+                  backgroundColor: slot.isAvailable ? "success.light" : "error.light",
+                  color: slot.isAvailable ? "success.dark" : "error.dark",
+                  px: 1,
+                  py: 0.25,
+                  borderRadius: 5,
+                  mt: 0.5
+                }}>
+                  {slot.isAvailable ? "Available" : "Unavailable"}
+                </Typography>
+                <IconButton
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    top: 5,
+                    right: 5,
+                    backgroundColor: "rgba(255, 255, 255, 0.8)",
+                    "&:hover": {
+                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenDeleteModal(slot);
+                  }}
+                >
+                  <DeleteIcon fontSize="small" sx={{ color: "error.main" }} />
+                </IconButton>
+              </CardContent>
+            </Card>
+          ))}
+          <Card
+            sx={{
+              minWidth: 120,
+              maxWidth: 150,
+              height: "100%",
+              boxShadow: 1,
+              border: "1px dashed",
+              borderColor: "grey.400",
+              borderRadius: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              backgroundColor: "grey.50",
+              transition: "background-color 0.2s",
+              "&:hover": {
+                backgroundColor: "grey.100",
+              },
+            }}
+            onClick={handleOpenCreateModal}
+          >
+            <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 1.5 }}>
+              <Box sx={{ border: "1px solid", borderColor: "grey.400", borderRadius: "50%", p: 1, mb: 1 }}>
+                <AddIcon sx={{ color: "grey.600" }} />
+              </Box>
+              <Typography variant="body2" color="text.secondary" align="center">
+                Add new slot
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+      ) : (
+        !loading && !error &&
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 4, bgcolor: "grey.50", borderRadius: 2, border: "1px dashed", borderColor: "grey.300" }}>
+          <CalendarMonthOutlined sx={{ fontSize: 40, color: "grey.500", mb: 2 }} />
+          <Typography variant="body1" sx={{ mb: 2, color: "text.secondary" }}>No available slots found.</Typography>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              startIcon={<GoogleIcon />}
+              onClick={handleGoogleCalendarConnect}
+              sx={{
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                }
+              }}
+            >
+              Import from Google
+            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -378,159 +526,11 @@ const AvailabilitySection = () => {
                 }
               }}
             >
-              Add Slot
+              Create Your First Slot
             </Button>
-          </Box>
+          </Stack>
         </Box>
-
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
-        {error && <Typography color="error">{error}</Typography>}
-
-        {!loading && !error && slots && slots.length > 0 ? (
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-            {slots.map((slot, index) => (
-              <Card
-                key={index}
-                sx={{
-                  minWidth: 120,
-                  maxWidth: 150,
-                  boxShadow: 2,
-                  border: "1px solid",
-                  borderColor: slot.isAvailable ? "primary.light" : "grey.300",
-                  borderRadius: 2,
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                  cursor: "pointer",
-                  "&:hover": { 
-                    transform: "translateY(-3px)",
-                    boxShadow: 4,
-                    borderColor: slot.isAvailable ? "primary.main" : "grey.400"
-                  },
-                  position: "relative",
-                  opacity: slot.isAvailable ? 1 : 0.75
-                }}
-                onClick={() => handleOpenUpdateModal(slot)}
-              >
-                <CardContent sx={{ textAlign: "center", p: 1.5, "&:last-child": { pb: 1.5 } }}>
-                  <Box sx={{ 
-                    backgroundColor: slot.isAvailable ? "primary.light" : "grey.200", 
-                    py: 0.5, 
-                    borderRadius: 1,
-                    mb: 1.5,
-                    color: slot.isAvailable ? "primary.dark" : "text.secondary"
-                  }}>
-                    <Typography variant="body2" fontWeight="bold">
-                      {dayjs(slot.startDateTime).format("MMM D, YYYY")}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", mb: 0.5 }}>
-                    <AccessTimeOutlined sx={{ fontSize: 16, mr: 0.5, color: "text.secondary" }} />
-                    <Typography variant="body2" color="text.secondary">
-                      {dayjs(slot.startDateTime).format("HH:mm")} - {dayjs(slot.endDateTime).format("HH:mm")}
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" sx={{ 
-                    display: "inline-block", 
-                    backgroundColor: slot.isAvailable ? "success.light" : "error.light", 
-                    color: slot.isAvailable ? "success.dark" : "error.dark",
-                    px: 1,
-                    py: 0.25,
-                    borderRadius: 5,
-                    mt: 0.5
-                  }}>
-                    {slot.isAvailable ? "Available" : "Unavailable"}
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    sx={{
-                      position: "absolute",
-                      top: 5,
-                      right: 5,
-                      backgroundColor: "rgba(255, 255, 255, 0.8)",
-                      "&:hover": {
-                        backgroundColor: "rgba(255, 255, 255, 0.9)",
-                      }
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenDeleteModal(slot);
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" sx={{ color: "error.main" }} />
-                  </IconButton>
-                </CardContent>
-              </Card>
-            ))}
-            <Card
-              sx={{
-                minWidth: 120,
-                maxWidth: 150,
-                height: "100%",
-                boxShadow: 1,
-                border: "1px dashed",
-                borderColor: "grey.400",
-                borderRadius: 2,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                backgroundColor: "grey.50",
-                transition: "background-color 0.2s",
-                "&:hover": { 
-                  backgroundColor: "grey.100",
-                },
-              }}
-              onClick={handleOpenCreateModal}
-            >
-              <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 1.5 }}>
-                <Box sx={{ border: "1px solid", borderColor: "grey.400", borderRadius: "50%", p: 1, mb: 1 }}>
-                  <AddIcon sx={{ color: "grey.600" }} />
-                </Box>
-                <Typography variant="body2" color="text.secondary" align="center">
-                  Add new slot
-                </Typography>
-              </CardContent>
-            </Card>
-          </Box>
-        ) : (
-          !loading && !error && 
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 4, bgcolor: "grey.50", borderRadius: 2, border: "1px dashed", borderColor: "grey.300" }}>
-            <CalendarMonthOutlined sx={{ fontSize: 40, color: "grey.500", mb: 2 }} />
-            <Typography variant="body1" sx={{ mb: 2, color: "text.secondary" }}>No available slots found.</Typography>
-            <Stack direction="row" spacing={2}>
-              <Button 
-                variant="outlined" 
-                startIcon={<GoogleIcon />}
-                onClick={handleGoogleCalendarConnect}
-                sx={{
-                  borderColor: 'primary.main',
-                  color: 'primary.main',
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                  }
-                }}
-              >
-                Import from Google
-              </Button>
-              <Button 
-                variant="contained" 
-                startIcon={<AddIcon />}
-                onClick={handleOpenCreateModal}
-                sx={{
-                  bgcolor: 'primary.main',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                  }
-                }}
-              >
-                Create Your First Slot
-              </Button>
-            </Stack>
-          </Box>
-        )}
+      )}
 
         {/* Create Slot Modal */}
         <Dialog open={openCreateModal} onClose={() => setOpenCreateModal(false)} maxWidth="sm" fullWidth>
@@ -549,7 +549,8 @@ const AvailabilitySection = () => {
                   label="Date"
                   value={formData.date}
                   onChange={(newValue) => handleInputChange('date', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
                   sx={{ width: '100%', mb: 2 }}
                 />
               </Box>
@@ -558,14 +559,16 @@ const AvailabilitySection = () => {
                   label="Start Time"
                   value={formData.startTime}
                   onChange={(newValue) => handleInputChange('startTime', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true } }}
                   sx={{ width: '50%' }}
                 />
                 <TimePicker
                   label="End Time"
                   value={formData.endTime}
                   onChange={(newValue) => handleInputChange('endTime', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true } }}
                   sx={{ width: '50%' }}
                 />
               </Box>
@@ -624,7 +627,8 @@ const AvailabilitySection = () => {
                   label="Date"
                   value={formData.date}
                   onChange={(newValue) => handleInputChange('date', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
                   sx={{ width: '100%', mb: 2 }}
                 />
               </Box>
@@ -633,14 +637,16 @@ const AvailabilitySection = () => {
                   label="Start Time"
                   value={formData.startTime}
                   onChange={(newValue) => handleInputChange('startTime', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true } }}
                   sx={{ width: '50%' }}
                 />
                 <TimePicker
                   label="End Time"
                   value={formData.endTime}
                   onChange={(newValue) => handleInputChange('endTime', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true } }}
                   sx={{ width: '50%' }}
                 />
               </Box>
@@ -756,14 +762,16 @@ const AvailabilitySection = () => {
                   label="Start Date"
                   value={importSettings.startDate}
                   onChange={(newValue) => handleImportSettingChange('startDate', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true } }}
                   sx={{ width: '50%' }}
                 />
                 <DatePicker
                   label="End Date"
                   value={importSettings.endDate}
                   onChange={(newValue) => handleImportSettingChange('endDate', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{ textField: TextField }}
+                  slotProps={{ textField: { fullWidth: true } }}
                   sx={{ width: '50%' }}
                 />
               </Box>

@@ -128,9 +128,28 @@ const useTherapistStore = create((set) => ({
     fetchSessions: async () => {
         set({loading: true, error:null});
         try{
+            // First get the sessions
             const response = await axios.get(`http://localhost:5555/session/getSession`);
-            set({sessions: response.data.sessions, loading:false});
-        }catch(err){
+            const sessions = response.data.sessions;
+            
+            // For each session, fetch the decrypted notes
+            const sessionsWithDecryptedNotes = await Promise.all(
+                sessions.map(async (session) => {
+                    try {
+                        const notesResponse = await axios.get(`http://localhost:5555/session/${session._id}/notes`);
+                        return {
+                            ...session,
+                            notes: notesResponse.data.notes // This contains already decrypted notes
+                        };
+                    } catch (err) {
+                        console.error(`Failed to fetch notes for session ${session._id}:`, err);
+                        return session; // Return the session without decrypted notes if there was an error
+                    }
+                })
+            );
+            
+            set({sessions: sessionsWithDecryptedNotes, loading:false});
+        } catch(err) {
             set({error: err.message, loading:false});
         }
     },
@@ -204,59 +223,77 @@ const useTherapistStore = create((set) => ({
         }
     },
 
-    // New function to update private notes for a session
-    updatePrivateNotes: async (sessionId, privateNotes) => {
-        set({ loading: true, error: null });
-        try {
-            const response = await axios.put(`http://localhost:5555/session/${sessionId}/privateNotes`, {
-                privateNotes
-            });
-            
-            // Update the sessions in the store
-            set((state) => {
-                const updatedSessions = state.sessions.map(session =>
-                    session._id === sessionId 
-                        ? { ...session, notes: { ...session.notes, therapistNotes: privateNotes } } 
-                        : session
-                );
-                return { sessions: updatedSessions };
-            });
-            
-            set({ loading: false });
-            return response.data;
-        } catch (error) {
-            set({ error: error.response?.data?.message || 'Failed to update private notes', loading: false });
-            console.error('Error updating private notes:', error);
-            return { success: false, message: error.response?.data?.message || 'Failed to update private notes' };
-        }
-    },
+    // Update private notes handling
+updatePrivateNotes: async (sessionId, privateNotes) => {
+    set({ loading: true, error: null });
+    try {
+        const response = await axios.put(`http://localhost:5555/session/${sessionId}/privateNotes`, {
+            content: privateNotes
+        });
+        
+        // After update, fetch the latest decrypted notes
+        const notesResponse = await axios.get(`http://localhost:5555/session/${sessionId}/notes`);
+        
+        // Update the sessions in the store with decrypted notes
+        set((state) => {
+            const updatedSessions = state.sessions.map(session =>
+                session._id === sessionId 
+                    ? { ...session, notes: notesResponse.data.notes } 
+                    : session
+            );
+            return { 
+                sessions: updatedSessions,
+                sessionNotes: {
+                    ...state.sessionNotes,
+                    [sessionId]: notesResponse.data.notes
+                }
+            };
+        });
+        
+        set({ loading: false });
+        return response.data;
+    } catch (error) {
+        set({ error: error.response?.data?.message || 'Failed to update private notes', loading: false });
+        console.error('Error updating private notes:', error);
+        return { success: false, message: error.response?.data?.message || 'Failed to update private notes' };
+    }
+},
 
-    // New function to update shared notes for a session
-    updateSharedNotes: async (sessionId, sharedNotes) => {
-        set({ loading: true, error: null });
-        try {
-            const response = await axios.put(`http://localhost:5555/session/${sessionId}/sharedNotes`, {
-                sharedNotes
-            });
-            
-            // Update the sessions in the store
-            set((state) => {
-                const updatedSessions = state.sessions.map(session =>
-                    session._id === sessionId 
-                        ? { ...session, notes: { ...session.notes, sharedNotes: sharedNotes } } 
-                        : session
-                );
-                return { sessions: updatedSessions };
-            });
-            
-            set({ loading: false });
-            return response.data;
-        } catch (error) {
-            set({ error: error.response?.data?.message || 'Failed to update shared notes', loading: false });
-            console.error('Error updating shared notes:', error);
-            return { success: false, message: error.response?.data?.message || 'Failed to update shared notes' };
-        }
-    },
+  // Update shared notes handling (similar to private notes)
+updateSharedNotes: async (sessionId, sharedNotes) => {
+    set({ loading: true, error: null });
+    try {
+        const response = await axios.put(`http://localhost:5555/session/${sessionId}/sharedNotes`, {
+            sharedNotes
+        });
+        
+        // After update, fetch the latest decrypted notes
+        const notesResponse = await axios.get(`http://localhost:5555/session/${sessionId}/sharedNotes`);
+        
+        // Update the sessions in the store with decrypted notes
+        set((state) => {
+            const updatedSessions = state.sessions.map(session =>
+                session._id === sessionId 
+                    ? { ...session, notes: notesResponse.data.notes } 
+                    : session
+            );
+            return { 
+                sessions: updatedSessions,
+                sessionNotes: {
+                    ...state.sessionNotes,
+                    [sessionId]: notesResponse.data.notes
+                }
+            };
+        });
+        
+        set({ loading: false });
+        return response.data;
+    } catch (error) {
+        set({ error: error.response?.data?.message || 'Failed to update shared notes', loading: false });
+        console.error('Error updating shared notes:', error);
+        return { success: false, message: error.response?.data?.message || 'Failed to update shared notes' };
+    }
+},
 
     // New function to fetch client session history
     fetchClientSessionHistory: async (clientId) => {
@@ -281,20 +318,29 @@ const useTherapistStore = create((set) => ({
         }
     },
 
-    // Optional: Function to fetch session notes specifically
+    // Update the fetchSessionNotes method to store decrypted notes properly
     fetchSessionNotes: async (sessionId) => {
         set({ loading: true, error: null });
         try {
             const response = await axios.get(`http://localhost:5555/session/${sessionId}/notes`);
             
-            // Store the session notes in the state
-            set((state) => ({
-                sessionNotes: { 
-                    ...state.sessionNotes, 
-                    [sessionId]: response.data.notes 
-                },
-                loading: false
-            }));
+            // Update the specific session in sessions array with decrypted notes
+            set((state) => {
+                const updatedSessions = state.sessions.map(session =>
+                    session._id === sessionId 
+                        ? { ...session, notes: response.data.notes } 
+                        : session
+                );
+                
+                return { 
+                    sessions: updatedSessions,
+                    sessionNotes: { 
+                        ...state.sessionNotes, 
+                        [sessionId]: response.data.notes 
+                    },
+                    loading: false
+                };
+            });
             
             return response.data;
         } catch (error) {
@@ -302,7 +348,7 @@ const useTherapistStore = create((set) => ({
             console.error('Error fetching session notes:', error);
             return { success: false, message: error.response?.data?.message || 'Failed to fetch session notes' };
         }
-    }
+    },
 }));
 
 export default useTherapistStore;

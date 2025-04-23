@@ -98,7 +98,7 @@ const useAdminStore = create(
         try {
           const response = await axios.put(
             `${API_URL}/therapists/verify`, 
-            { therapistId, isTherapistVerified:isApproved}
+            { therapistId, isLicenseVerified:isApproved}
           );
           
           // Remove the approved/rejected therapist from the list

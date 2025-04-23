@@ -1060,10 +1060,10 @@ const TherapistOnboarding = () => {
                       multiline={formData.paymentDetails.provider === 'bank_transfer'}
                       rows={formData.paymentDetails.provider === 'bank_transfer' ? 4 : 1}
                       helperText={
-                        formData.paymentDetails.provider === 'stripe'
-                          ? 'Enter your Stripe Account ID'
-                          : formData.paymentDetails.provider === 'paypal'
-                          ? 'Enter the email associated with your PayPal account'
+                        formData.paymentDetails.provider === 'Khalti'
+                          ? 'Enter your Khalti Account ID'
+                          : formData.paymentDetails.provider === 'Esewa'
+                          ? 'Enter the email associated with your Esewa account'
                           : 'Enter your complete bank account details including account number, routing number, and bank name'
                       }
                     />

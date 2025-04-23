@@ -4,8 +4,14 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const passport = require('passport');
+const http = require('http');
+const server = require('socket.io');
+const io = new server(server, {
+    cors: {origin: "*"},
+});
 const googleOAuthConfig = require('./config/googleOAuth');
 const cors = require('cors');
+
 const connectDB = require('./connection/connection');
 const authRoutes = require('./routes/authenticationRoutes');
 const cookieParser = require('cookie-parser');
@@ -41,7 +47,7 @@ app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use('/uploads', express.static(path.join(__dirname, '../backend/controllers/uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../backend/uploads')));
 app.get('/', (req, res) => {
     res.json({ message: "Server is running!" });
 });

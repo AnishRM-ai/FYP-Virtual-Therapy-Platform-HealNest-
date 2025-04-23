@@ -548,14 +548,14 @@ const verifyAndCompleteBooking = async (pidx) => {
                     fontFamily: '"Playfair Display", serif',
                     mb: 1
                   }}>
-                    {therapist.fullname}
+                    Dr. {therapist.fullname}
                   </Typography>
                   <Typography variant="subtitle1" sx={{ 
                     color: colors.secondary, 
                     mb: 1,
                     fontStyle: 'italic'
                   }}>
-                    Mental Health Professional
+                    {therapist.therapistType}
                   </Typography>
                   
                   <Box sx={{ 
