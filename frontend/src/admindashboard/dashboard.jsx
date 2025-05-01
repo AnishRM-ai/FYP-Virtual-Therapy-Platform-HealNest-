@@ -51,6 +51,7 @@ import {
 
 // Import our admin store
 import useAdminStore from '../store/adminStore';
+import useNotificationStore from '../store/notificationStore';
 
 function HealNestAdminDashboard() {
   // Local state
@@ -67,29 +68,16 @@ function HealNestAdminDashboard() {
 
   // Notification state
   const [notificationsAnchorEl, setNotificationsAnchorEl] = useState(null);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'therapist',
-      message: 'New therapist verification request',
-      timestamp: new Date(),
-      read: false
-    },
-    {
-      id: 2,
-      type: 'report',
-      message: 'New user report submitted',
-      timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-      read: false
-    },
-    {
-      id: 3,
-      type: 'system',
-      message: 'System maintenance scheduled',
-      timestamp: new Date(Date.now() - 86400000), // 1 day ago
-      read: true
-    }
-  ]);
+  const {
+    notifications,
+    unreadCount,
+    loading: notificationsLoading,
+    error: notificationError,
+    fetchNotifications,
+    markAsRead,
+    markAllAsRead,
+    clearError: clearNotificationError
+  } = useNotificationStore();
 
   // Access the admin store
   const {
@@ -111,7 +99,8 @@ function HealNestAdminDashboard() {
     fetchDashboardStats();
     fetchPendingTherapists();
     fetchAllReports();
-  }, [fetchDashboardStats, fetchPendingTherapists, fetchAllReports]);
+    fetchNotifications();
+  }, [fetchDashboardStats, fetchPendingTherapists, fetchAllReports, fetchNotifications]);
 
   const handleTherapistClick = (therapist) => {
     setSelectedTherapist(therapist);
@@ -249,6 +238,7 @@ function HealNestAdminDashboard() {
   // Notification handlers
   const handleNotificationClick = (event) => {
     setNotificationsAnchorEl(event.currentTarget);
+    fetchNotifications();
   };
 
   const handleNotificationClose = () => {
@@ -256,17 +246,12 @@ function HealNestAdminDashboard() {
   };
 
   const handleNotificationRead = (id) => {
-    setNotifications(notifications.map(notification =>
-      notification.id === id ? { ...notification, read: true } : notification
-    ));
+    markAsRead(id);
   };
 
   const handleMarkAllRead = () => {
-    setNotifications(notifications.map(notification => ({ ...notification, read: true })));
+    markAllAsRead();
   };
-
-  // Count unread notifications
-  const unreadCount = notifications.filter(notification => !notification.read).length;
 
   return (
     <Box sx={{ display: 'flex' }}>

@@ -613,10 +613,48 @@ const getClientSessionsHistory = async (req, res) => {
         .populate('clientId', 'fullname email')
         .sort({ scheduledTime: -1 }); // Sort by most recent first
 
+        // Decrypt notes for each session
+        const decryptedSessions = sessions.map(session => {
+            const sessionObj = session.toObject();
+            
+            // Decrypt shared notes if they exist
+            if (sessionObj.notes?.sharedNotes) {
+                try {
+                    sessionObj.notes.sharedNotes = decrypt(sessionObj.notes.sharedNotes);
+                } catch (error) {
+                    console.error('Decryption failed for shared notes:', error);
+                    sessionObj.notes.sharedNotes = '[Secure content unavailable]';
+                }
+            }
+            
+            // Decrypt private notes if they exist (only for therapist)
+            if (sessionObj.notes?.privateNotes) {
+                sessionObj.notes.privateNotes = sessionObj.notes.privateNotes.map(note => {
+                    try {
+                        return {
+                            ...note,
+                            content: decrypt(note.content),
+                            // Keep original encrypted content for reference if needed
+                            encryptedContent: note.content
+                        };
+                    } catch (error) {
+                        console.error('Decryption failed for private note:', error);
+                        return {
+                            ...note,
+                            content: '[Secure content unavailable]',
+                            decryptionError: true
+                        };
+                    }
+                });
+            }
+            
+            return sessionObj;
+        });
+
         res.status(200).json({ 
             success: true, 
             message: 'Client session history retrieved successfully',
-            sessions: sessions
+            sessions: decryptedSessions
         });
     } catch (error) {
         console.error('Error fetching client sessions history:', error);

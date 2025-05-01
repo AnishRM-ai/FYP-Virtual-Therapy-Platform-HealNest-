@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Availability = require('../models/availability');
+const {notifyAdmins} = require('../utils/notifyAdmin');
 const multer = require('multer');
 const path = require('path');
 
@@ -84,6 +85,19 @@ const onboardTherapist = async (req, res) => {
       });
 
       await newAvailability.save();
+    
+     //notify admins
+     try{
+      await notifyAdmins({
+        type:'therapist',
+        title:'New Therapist Onboarded',
+        message:`${user.fullname} has completed the onboarding process as a ${therapistType} therapist.`,
+        relatedId: user._id,
+        onModel:'User'
+      }) 
+     }catch (notificationError){
+      console.error('Failed to send admin notification: ', notificationError);
+     }
 
       res.status(200).json({
         success: true,
