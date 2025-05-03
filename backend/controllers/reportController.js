@@ -1,6 +1,7 @@
 const Report = require('../models/reportModel');
 const Post = require('../models/forumPage');
 const mongoose = require('mongoose');
+const {notifyAdmins} = require('../utils/notifyAdmin');
 
 // Create a new report
 exports.createReport = async (req, res) => {
@@ -36,6 +37,15 @@ exports.createReport = async (req, res) => {
     });
 
     await report.save();
+
+    //notify admin
+    await notifyAdmins({
+      type:'report',
+      title:'New Post Report',
+      message:`A post has been reported : ${reason}`,
+      relatedId: report._id,
+      onModel:'Report'
+    });
 
     return res.status(201).json({
       success: true,

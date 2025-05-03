@@ -32,6 +32,7 @@ const drawerWidth = 240;
 
 export default function HealNestDashboard() {
   const [selectedTab, setSelectedTab] = useState('Dashboard');
+  const [isLoading, setIsLoading] = useState(true);
   const {
     loading,
     error,
@@ -50,44 +51,75 @@ export default function HealNestDashboard() {
     error: feedbackError 
   } = useFeedbackStore();
 
-  // Load therapists and the authenticated therapist
+  // Load data in sequence to ensure proper dependencies
   useEffect(() => {
-    fetchTherapists();
-    fetchAuthenticatedTherapist();
-  }, [fetchTherapists, fetchAuthenticatedTherapist]);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // First, fetch the authenticated therapist
+        await fetchAuthenticatedTherapist();
+      } catch (error) {
+        console.error("Error fetching therapist data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [fetchAuthenticatedTherapist]);
 
-  // Once the authenticated therapist is loaded, fetch their availability, sessions, and feedbacks
+  // Load dependent data after therapist is loaded
   useEffect(() => {
+    const loadDependentData = async () => {
+      if (therapist?._id) {
+        try {
+          // Load these in parallel since they depend on therapist but not on each other
+          await Promise.all([
+            fetchAuthenticatedAvailability(),
+            fetchSessions(therapist._id),
+            fetchCurrentTherapistFeedback()
+          ]);
+        } catch (error) {
+          console.error("Error fetching dependent data:", error);
+        }
+      }
+    };
+    
     if (therapist?._id) {
-      fetchAuthenticatedAvailability();
-      fetchSessions(therapist._id);
-      fetchCurrentTherapistFeedback(); // Fetch feedbacks for the therapist
+      loadDependentData();
     }
   }, [therapist, fetchAuthenticatedAvailability, fetchSessions, fetchCurrentTherapistFeedback]);
 
+  // Also load the list of all therapists (if needed)
+  useEffect(() => {
+    fetchTherapists();
+  }, [fetchTherapists]);
+
   // Filter sessions to show only scheduled sessions
   const scheduledSessions = sessions.filter(session => session.status === 'scheduled');
-  const completedsession = sessions.filter(session => session.status === 'completed' );
+  const completedSessions = sessions.filter(session => session.status === 'completed');
 
-  const uniqueClientIds = [...new Set(sessions.map(session => session.clientId._id))];
-const totalPatients = uniqueClientIds.length;
+  // Calculate unique clients
+  const uniqueClientIds = [...new Set(sessions.map(session => 
+    session.clientId && session.clientId._id ? session.clientId._id : null)
+    .filter(id => id !== null))];
+  const totalPatients = uniqueClientIds.length;
+
   // Sort feedbacks by most recent
   const recentFeedbacks = [...feedbacks]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 3); // Display only the 3 most recent feedbacks
 
- 
+  // Calculate stats
   const stats = {
     upcomingSessions: scheduledSessions.length,
-    completedSessions: completedsession.length,
+    completedSessions: completedSessions.length,
     totalPatients: totalPatients,
     averageRating: feedbacks.length > 0 
       ? (feedbacks.reduce((sum, feedback) => sum + feedback.rating, 0) / feedbacks.length).toFixed(1)
       : 0
   };
 
-  // Rest of the component remains the same as in the original code...
-  
   const dashboardContent = (
     <>
       {/* Welcome Message */}
@@ -156,7 +188,6 @@ const totalPatients = uniqueClientIds.length;
         </Grid>
       </Grid>
     
-
       <Grid container spacing={3}>
         {/* Upcoming Sessions Column */}
         <Grid item xs={6}>
@@ -181,7 +212,11 @@ const totalPatients = uniqueClientIds.length;
             </Box>
 
             <Stack spacing={3}>
-              {scheduledSessions.length === 0 ? (
+              {loading ? (
+                <Typography variant="body1" color="text.secondary">
+                  Loading sessions...
+                </Typography>
+              ) : scheduledSessions.length === 0 ? (
                 <Typography variant="body1" color="text.secondary">
                   No scheduled sessions.
                 </Typography>
@@ -189,11 +224,13 @@ const totalPatients = uniqueClientIds.length;
                 scheduledSessions.map(session => (
                   <Box key={session._id} sx={{ display: 'flex', alignItems: 'center' }}>
                     <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
-                      {session.clientId.fullname.charAt(0)}
+                      {session.clientId && session.clientId.fullname ? 
+                        session.clientId.fullname.charAt(0) : '?'}
                     </Avatar>
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="subtitle1" fontWeight="medium">
-                        {session.clientId.fullname} {session.status}
+                        {session.clientId && session.clientId.fullname ? 
+                          session.clientId.fullname : 'Unknown Client'} {session.status}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Therapy Session
@@ -225,7 +262,11 @@ const totalPatients = uniqueClientIds.length;
             </Box>
 
             <Stack spacing={3}>
-              {recentFeedbacks.length === 0 ? (
+              {feedbackLoading ? (
+                <Typography variant="body1" color="text.secondary">
+                  Loading feedbacks...
+                </Typography>
+              ) : recentFeedbacks.length === 0 ? (
                 <Typography variant="body1" color="text.secondary">
                   No recent feedbacks.
                 </Typography>
@@ -242,12 +283,14 @@ const totalPatients = uniqueClientIds.length;
                     }}
                   >
                     <Avatar sx={{ width: 40, height: 40, bgcolor: '#f0f0f0', color: 'text.primary', mr: 2 }}>
-                      {feedback.clientId.fullname.charAt(0)}
+                      {feedback.clientId && feedback.clientId.fullname ? 
+                        feedback.clientId.fullname.charAt(0) : '?'}
                     </Avatar>
                     <Box sx={{ flexGrow: 1 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                         <Typography variant="subtitle1" fontWeight="medium">
-                          {feedback.clientId.fullname}
+                          {feedback.clientId && feedback.clientId.fullname ? 
+                            feedback.clientId.fullname : 'Unknown Client'}
                         </Typography>
                         <Rating 
                           value={feedback.rating} 
@@ -269,8 +312,10 @@ const totalPatients = uniqueClientIds.length;
             </Stack>
           </Paper>
         </Grid>
-
-        {/* Availability Section */}
+      </Grid>
+      
+      {/* Availability Section - Always render regardless of sessions */}
+      <Grid item xs={12} sx={{ mt: 3 }}>
         <AvailabilitySection />
       </Grid>
     </>
@@ -283,7 +328,17 @@ const totalPatients = uniqueClientIds.length;
       setSelectedTab={setSelectedTab}
       user={therapist}
     >
-      {dashboardContent}
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <Typography variant="h6">Loading dashboard data...</Typography>
+        </Box>
+      ) : error ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <Typography variant="h6" color="error">Error loading dashboard: {error}</Typography>
+        </Box>
+      ) : (
+        dashboardContent
+      )}
     </Layout>
   );
 }
