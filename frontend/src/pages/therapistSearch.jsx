@@ -21,6 +21,8 @@ import {
   MenuItem,
   Slider,
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import LanguageIcon from '@mui/icons-material/Language';
@@ -170,7 +172,7 @@ const HeroSection = ({ mode, onSearch }) => {
 const TherapistCard = ({
   name,
   rating = 0,
-  reviews = 0,
+  isLicenseVerified = false,
   education = [], // Array of education objects
   license = '',
   licenseNumber = '',
@@ -212,7 +214,18 @@ const TherapistCard = ({
 
   // Get colors based on therapist type
   const typeColor = categoryColors[therapistType] || categoryColors.specialist;
-
+  const verificationColors = {
+    verified: {
+      bg: mode === 'light' ? 'rgba(46, 125, 50, 0.1)' : 'rgba(46, 125, 50, 0.2)',
+      text: '#2E7D32', // Green
+      icon: '#2E7D32'
+    },
+    unverified: {
+      bg: mode === 'light' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(211, 47, 47, 0.2)',
+      text: '#D32F2F', // Red
+      icon: '#D32F2F'
+    }
+  };
   const handleBookSession = () => {
     navigate(`/booking/${therapistId}`);
   };
@@ -338,13 +351,27 @@ const TherapistCard = ({
                   size="small"
                   sx={{ mr: 1 }}
                 />
-                <Typography 
-                  variant="body2"
-                  sx={{ color: currentTheme.text.secondary }}
-                >
-                  ({reviews} reviews)
-                </Typography>
               </Box>
+
+              <Chip
+                icon={isLicenseVerified ? 
+                  <CheckCircleIcon sx={{ color: verificationColors.verified.icon }} /> : 
+                  <WarningIcon sx={{ color: verificationColors.unverified.icon }} />
+                }
+                label={isLicenseVerified ? "Verified License" : "License Not Verified"}
+                size="small"
+                sx={{ 
+                  fontSize: '0.75rem',
+                  bgcolor: isLicenseVerified ? 
+                    verificationColors.verified.bg : 
+                    verificationColors.unverified.bg,
+                  color: isLicenseVerified ? 
+                    verificationColors.verified.text : 
+                    verificationColors.unverified.text,
+                  fontWeight: 500,
+                  mb: 1
+                }}
+              />
               
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <SchoolIcon fontSize="small" sx={{ color: currentTheme.secondary, fontSize: 16 }} />
@@ -883,7 +910,7 @@ const TherapistFinder = () => {
                     therapistId={therapist._id}
                     name={therapist.fullname}
                     rating={therapist.rating || 0}
-                    reviews={therapist.reviews || 0}
+                    isLicenseVerified={therapist.isLicenseVerified || false}
                     education={therapist.education || []}
                     license={therapist.license || ''}
                     licenseNumber={therapist.licenseNumber || ''}

@@ -536,8 +536,9 @@ const verifyAndCompleteBooking = async (pidx) => {
                     mr: isMobile ? 0 : 3,
                     mb: isMobile ? 2 : 0,
                     backgroundColor: colors.primary,
-                    fontSize: '3rem'
+                    fontSize: '3rem',
                   }}
+                  src=''
                 >
                   {therapist.avatar}
                 </Avatar>

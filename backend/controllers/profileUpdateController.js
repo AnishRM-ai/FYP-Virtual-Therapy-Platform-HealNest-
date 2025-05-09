@@ -181,14 +181,14 @@ const userProfileController = {
         
         // If user already has an avatar, delete the old one
         if (user.avatar) {
-          const oldAvatarPath = path.join(__dirname, '../uploads/avatars', path.basename(user.avatar));
+          const oldAvatarPath = path.join(__dirname, '/avatars', path.basename(user.avatar));
           if (fs.existsSync(oldAvatarPath)) {
             fs.unlinkSync(oldAvatarPath);
           }
         }
         
         // Set new avatar path (relative to public folder)
-        user.avatar = `../uploads/avatars/${req.file.filename}`;
+        user.avatar = `/avatars/${req.file.filename}`;
         await user.save();
         
         res.status(200).json({
