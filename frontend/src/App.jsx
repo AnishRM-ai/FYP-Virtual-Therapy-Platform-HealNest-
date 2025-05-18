@@ -29,6 +29,7 @@ import AdminLoginPage from "./admindashboard/adminlogin.jsx";
 import ProfileEditPage from "./therapistDash/profile.jsx";
 import HowItWorksPage from "./pages/howitworks.jsx";
 import AboutMePage from "./pages/aboutus.jsx";
+import AvailabilityPage from "./therapistDash/availabilityPage.jsx";
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
 
@@ -134,11 +135,12 @@ const App = () => {
         <Route path="/client/onboarding" element={<ClientOnboarding />} />
         <Route path="/booking/:id" element={<AppointmentBooking />} />
         <Route path="/therapist-search" element={<FindTherapist />} />
-        <Route path="/availability" element={<AvailabilityManagement/>} />
+        <Route path="/availability" element={<AvailabilityPage/>} />
         <Route path="/sessionList" element={<SessionsManagement/>} />
         <Route path="/sessionList/:id" element={<SessionsManagement/>} />
         <Route path="/clientsessionList" element={<PatientSessionsManagement/>} />
         <Route path="/clientsessionList/:id" element={<PatientSessionsManagement/>} />
+        
 
 
         <Route path="/howitworks" element={<HowItWorksPage/>} />

@@ -240,7 +240,10 @@ const TherapistCard = ({
       default: return 'Mental Health Professional';
     }
   };
-
+  const getDisplayName = () => {
+    if (!name) return 'Unnamed Therapist';
+    return therapistType === 'clinical' ? `Dr. ${name}` : name;
+  };
   // Get the highest degree from education array
   const getHighestDegree = () => {
     if (!education || education.length === 0) return 'N/A';
@@ -340,7 +343,7 @@ const TherapistCard = ({
                   color: currentTheme.text.primary
                 }}
               >
-                {name || 'Unnamed Therapist'}
+                {getDisplayName()}
               </Typography>
               
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
@@ -506,7 +509,7 @@ const TherapistCard = ({
                 color: typeColor.main
               }}
             >
-              ${sessionPrice}/hour
+              NPR {sessionPrice}/hour
             </Typography>
           </Box>
         </CardContent>
@@ -810,7 +813,7 @@ const TherapistFinder = () => {
                           precision={0.5}
                         />
                         <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
-                          Price Range: ${priceRange[0]} - ${priceRange[1]}
+                          Price Range: Npr {priceRange[0]} - Npr{priceRange[1]}
                         </Typography>
                         <Slider
                           value={priceRange}

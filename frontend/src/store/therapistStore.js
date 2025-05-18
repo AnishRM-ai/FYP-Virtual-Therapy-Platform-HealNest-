@@ -238,7 +238,7 @@ updatePrivateNotes: async (sessionId, privateNotes) => {
         set((state) => {
             const updatedSessions = state.sessions.map(session =>
                 session._id === sessionId 
-                    ? { ...session, notes: notesResponse.data.notes } 
+                    ? { ...session, privateNotes: notesResponse.data.notes.privateNotes } 
                     : session
             );
             return { 
@@ -264,17 +264,17 @@ updateSharedNotes: async (sessionId, sharedNotes) => {
     set({ loading: true, error: null });
     try {
         const response = await axios.put(`http://localhost:5555/session/${sessionId}/sharedNotes`, {
-            sharedNotes
+            content:sharedNotes
         });
         
         // After update, fetch the latest decrypted notes
-        const notesResponse = await axios.get(`http://localhost:5555/session/${sessionId}/sharedNotes`);
+        const notesResponse = await axios.get(`http://localhost:5555/session/${sessionId}/notes`);
         
         // Update the sessions in the store with decrypted notes
         set((state) => {
             const updatedSessions = state.sessions.map(session =>
                 session._id === sessionId 
-                    ? { ...session, notes: notesResponse.data.notes } 
+                    ? { ...session, sharedNotes: notesResponse.data.notes.sharedNotes} 
                     : session
             );
             return { 

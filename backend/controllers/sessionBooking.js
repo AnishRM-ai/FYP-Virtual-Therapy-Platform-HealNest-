@@ -320,50 +320,7 @@ const getSessionDetails = async (req, res) => {
     }
 };
 
-// For shared notes (string field)
-const updateSharedNotes = async (req, res) => {
-    const { sessionId } = req.params;
-    const { sharedNotes } = req.body;
-    const therapistId = req.userId;
-    
-    try {
-        if (!sharedNotes || typeof sharedNotes !== 'string') {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Shared notes content is required' 
-            });
-        }
-        
-        // Encrypt and stringify
-        const encryptedContent = encrypt(sharedNotes);
-        
-        const session = await Session.findOneAndUpdate(
-            { _id: sessionId, therapistId },
-            { $set: { 'notes.sharedNotes': encryptedContent }},
-            { new: true, runValidators: true }
-        ).populate('clientId', 'fullname email');
 
-        if (!session) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Session not found or unauthorized access' 
-            });
-        }
-
-        res.status(200).json({ 
-            success: true, 
-            message: 'Shared notes updated securely',
-            session: session
-        });
-    } catch (error) {
-        console.error('Error updating shared notes:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Internal server error',
-            error: error.message 
-        });
-    }
-};
 
 // For private notes (array of notes)
 const updatePrivateNotes = async (req, res) => {
@@ -415,7 +372,57 @@ const updatePrivateNotes = async (req, res) => {
     }
 };
 
-// For getting notes
+const updateSharedNotes = async (req, res) => {
+    const { sessionId } = req.params;
+    const { content } = req.body;
+    const therapistId = req.userId;
+    
+    try {
+        if (!content || typeof content !== 'string') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Shared note content is required' 
+            });
+        }
+        
+        // Encrypt content
+        const encryptedContent = encrypt(content);
+        
+        // Create a new note object instead of replacing the entire field
+        const newNote = {
+            content: encryptedContent,
+            createdAt: new Date()
+        };
+        
+        const session = await Session.findOneAndUpdate(
+            { _id: sessionId, therapistId },
+            { $push: { 'notes.sharedNotes': newNote }}, // Push to array instead of set
+            { new: true, runValidators: true }
+        ).populate('clientId', 'fullname email');
+
+        if (!session) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Session not found or unauthorized access' 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Shared note added securely',
+            session: session
+        });
+    } catch (error) {
+        console.error('Error adding shared note:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message 
+        });
+    }
+};
+
+// For getting notes - updated to handle shared notes as array
 const getSessionNotes = async (req, res) => {
     const { sessionId } = req.params;
     const userId = req.userId;
@@ -442,15 +449,25 @@ const getSessionNotes = async (req, res) => {
             });
         }
 
-        // Decrypt shared notes
-        let decryptedSharedNotes = '';
-        if (session.notes.sharedNotes) {
-            try {
-                decryptedSharedNotes = decrypt(session.notes.sharedNotes);
-            } catch (error) {
-                console.error('Decryption failed for shared notes:', error);
-                decryptedSharedNotes = '[Secure content unavailable]';
-            }
+        // Decrypt shared notes (now an array)
+        let decryptedSharedNotes = [];
+        if (session.notes.sharedNotes && session.notes.sharedNotes.length > 0) {
+            decryptedSharedNotes = session.notes.sharedNotes.map(note => {
+                try {
+                    return {
+                        ...note.toObject(),
+                        content: decrypt(note.content),
+                        encryptedContent: note.content // Keep original for reference
+                    };
+                } catch (error) {
+                    console.error('Decryption failed for shared note:', error);
+                    return {
+                        ...note.toObject(),
+                        content: '[Secure content unavailable]',
+                        decryptionError: true
+                    };
+                }
+            });
         }
 
         // Decrypt private notes if therapist
@@ -491,9 +508,10 @@ const getSessionNotes = async (req, res) => {
     }
 };
 
+// Combined update function for both note types
 const updateSessionNotes = async (req, res) => {
     const { sessionId } = req.params;
-    const { privateNote, sharedNotes } = req.body;
+    const { privateNote, sharedNote } = req.body; // Changed from sharedNotes to sharedNote
     const therapistId = req.userId;
     
     try {
@@ -504,25 +522,34 @@ const updateSessionNotes = async (req, res) => {
         // Handle private notes (add to array)
         if (privateNote && typeof privateNote === 'string') {
             const encryptedContent = encrypt(privateNote);
-            const newNote = {
-                content: encryptedContent, // Store as encrypted string
+            const newPrivateNote = {
+                content: encryptedContent,
                 createdAt: now
             };
-            updateOperations['$push'] = { 'notes.privateNotes': newNote };
+            updateOperations['$push'] = { 'notes.privateNotes': newPrivateNote };
         }
         
-        // Handle shared notes (replace entire string)
-        if (sharedNotes !== undefined && typeof sharedNotes === 'string') {
-            const encryptedContent = encrypt(sharedNotes);
-            updateOperations['$set'] = { 
-                'notes.sharedNotes': encryptedContent,
-                'updatedAt': now 
+        // Handle shared notes (add to array, not replace)
+        if (sharedNote && typeof sharedNote === 'string') {
+            const encryptedContent = encrypt(sharedNote);
+            const newSharedNote = {
+                content: encryptedContent,
+                createdAt: now
             };
-        } else if (sharedNotes !== undefined) {
-            // Handle case where sharedNotes is not a string
+            
+            // If $push already exists from private notes, add to it
+            if (updateOperations['$push']) {
+                updateOperations['$push']['notes.sharedNotes'] = newSharedNote;
+            } else {
+                updateOperations['$push'] = { 'notes.sharedNotes': newSharedNote };
+            }
+            
+            // Also update the session updatedAt timestamp
+            updateOperations['$set'] = { 'updatedAt': now };
+        } else if (sharedNote !== undefined && typeof sharedNote !== 'string') {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Shared notes must be a string' 
+                message: 'Shared note must be a string' 
             });
         }
         
@@ -559,7 +586,7 @@ const updateSessionNotes = async (req, res) => {
                 // Don't return encrypted content in response
                 notes: {
                     privateNotes: session.notes.privateNotes?.length || 0,
-                    sharedNotes: !!session.notes.sharedNotes
+                    sharedNotes: session.notes.sharedNotes?.length || 0
                 }
             }
         });
@@ -592,6 +619,7 @@ const updateSessionNotes = async (req, res) => {
     }
 };
 
+// Updated to handle both private and shared notes as arrays
 const getClientSessionsHistory = async (req, res) => {
     const { clientId } = req.params;
     const therapistId = req.userId;
@@ -617,24 +645,33 @@ const getClientSessionsHistory = async (req, res) => {
         const decryptedSessions = sessions.map(session => {
             const sessionObj = session.toObject();
             
-            // Decrypt shared notes if they exist
-            if (sessionObj.notes?.sharedNotes) {
-                try {
-                    sessionObj.notes.sharedNotes = decrypt(sessionObj.notes.sharedNotes);
-                } catch (error) {
-                    console.error('Decryption failed for shared notes:', error);
-                    sessionObj.notes.sharedNotes = '[Secure content unavailable]';
-                }
+            // Decrypt shared notes if they exist (now an array)
+            if (sessionObj.notes?.sharedNotes && sessionObj.notes.sharedNotes.length > 0) {
+                sessionObj.notes.sharedNotes = sessionObj.notes.sharedNotes.map(note => {
+                    try {
+                        return {
+                            ...note,
+                            content: decrypt(note.content),
+                            encryptedContent: note.content // Keep original for reference
+                        };
+                    } catch (error) {
+                        console.error('Decryption failed for shared note:', error);
+                        return {
+                            ...note,
+                            content: '[Secure content unavailable]',
+                            decryptionError: true
+                        };
+                    }
+                });
             }
             
             // Decrypt private notes if they exist (only for therapist)
-            if (sessionObj.notes?.privateNotes) {
+            if (sessionObj.notes?.privateNotes && sessionObj.notes.privateNotes.length > 0) {
                 sessionObj.notes.privateNotes = sessionObj.notes.privateNotes.map(note => {
                     try {
                         return {
                             ...note,
                             content: decrypt(note.content),
-                            // Keep original encrypted content for reference if needed
                             encryptedContent: note.content
                         };
                     } catch (error) {

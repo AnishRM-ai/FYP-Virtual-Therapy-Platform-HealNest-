@@ -63,10 +63,7 @@ const sessionSchema = new mongoose.Schema({
     },
     notes: {
         privateNotes: [noteSchema],
-        sharedNotes: {
-            type: String,
-            default: ''
-        }
+        sharedNotes: [noteSchema],
         },
     cancellation: {
         reason: String,

@@ -214,9 +214,11 @@ export default function PatientSessionsManagement() {
   };
 
   // Check if session has shared notes
-  const hasSharedNotes = (session) => {
-    return session?.notes?.sharedNotes && session.notes.sharedNotes.trim() !== '';
-  };
+const hasSharedNotes = (session) => {
+  return Array.isArray(session?.notes?.sharedNotes) && 
+         session.notes.sharedNotes.length > 0 &&
+         session.notes.sharedNotes.some(note => note.content);
+};
 
   return (
     <Layout
@@ -370,13 +372,13 @@ export default function PatientSessionsManagement() {
                           )}
                           {/* Added indicator for shared notes */}
                           {hasSharedNotes(session) && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                              <CommentOutlined sx={{ fontSize: 16, mr: 0.5, color: '#1976d2' }} />
-                              <Typography variant="body2" color="primary" noWrap sx={{ maxWidth: '500px' }}>
-                                Therapist's notes available
-                              </Typography>
-                            </Box>
-                          )}
+  <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+    <CommentOutlined sx={{ fontSize: 16, mr: 0.5, color: '#1976d2' }} />
+    <Typography variant="body2" color="primary" noWrap sx={{ maxWidth: '500px' }}>
+      {session.notes.sharedNotes.length} therapist note(s)
+    </Typography>
+  </Box>
+)}
                           {session.feedback && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                               <Rating 
@@ -592,25 +594,28 @@ export default function PatientSessionsManagement() {
 
               {/* Therapist's shared notes section */}
               {hasSharedNotes(selectedSession) && (
-                <>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="subtitle1" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CommentOutlined sx={{ fontSize: 20, mr: 1, color: '#1976d2' }} />
-                    Therapist's Notes
-                  </Typography>
-                  <Paper sx={{ 
-                    mt: 1, 
-                    p: 2, 
-                    bgcolor: '#f1f8e9', 
-                    borderRadius: 1,
-                    border: '1px solid #c5e1a5'
-                  }}>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {selectedSession.notes.sharedNotes}
-                    </Typography>
-                  </Paper>
-                </>
-              )}
+  <>
+    <Divider sx={{ my: 2 }} />
+    <Typography variant="subtitle1" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
+      <CommentOutlined sx={{ fontSize: 20, mr: 1, color: '#1976d2' }} />
+      Therapist's Notes
+    </Typography>
+    <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
+      {selectedSession.notes.sharedNotes.map((note, index) => (
+        <React.Fragment key={index}>
+          <ListItem alignItems="flex-start">
+            <ListItemText
+              primary={note.content}
+              secondary={dayjs(note.createdAt).format('MMMM D, YYYY h:mm A')}
+              sx={{ whiteSpace: 'pre-wrap' }}
+            />
+          </ListItem>
+          {index < selectedSession.notes.sharedNotes.length - 1 && <Divider />}
+        </React.Fragment>
+      ))}
+    </List>
+  </>
+)}
 
               {/* Client's own notes section */}
               {selectedSession.notes?.patientNotes && (

@@ -641,24 +641,7 @@ const MindShareFeed = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <IconButton 
-                    color="primary" 
-                    size="small"
-                    sx={{ backgroundColor: 'primary.light', color: 'primary.dark', 
-                      '&:hover': { backgroundColor: 'primary.light', opacity: 0.9 } }}
-                  >
-                    <InsertPhoto fontSize="small" />
-                  </IconButton>
-                  <IconButton 
-                    color="primary" 
-                    size="small"
-                    sx={{ backgroundColor: 'primary.light', color: 'primary.dark', 
-                      '&:hover': { backgroundColor: 'primary.light', opacity: 0.9 } }}
-                  >
-                    <Videocam fontSize="small" />
-                  </IconButton>
-                </Box>
+                
                 <Button
                   variant="contained"
                   color="primary"

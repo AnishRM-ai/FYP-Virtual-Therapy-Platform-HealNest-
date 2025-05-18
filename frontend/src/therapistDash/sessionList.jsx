@@ -82,6 +82,8 @@ export default function SessionsManagement() {
     updatePrivateNotes, 
     deletePrivateNote,
     updateSharedNotes,
+    addSharedNote,         // New function needed in your store
+    deleteSharedNote,      // New function needed in your store
     markSessionComplete, 
     deleteSession,
     fetchClientSessionHistory
@@ -96,12 +98,17 @@ export default function SessionsManagement() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openCompleteDialog, setOpenCompleteDialog] = useState(false);
   const [newPrivateNote, setNewPrivateNote] = useState('');
-  const [sharedNotes, setSharedNotes] = useState('');
+  
+  // New state for shared notes - similar to private notes
+  const [newSharedNote, setNewSharedNote] = useState('');
+  const [sharedNoteToDelete, setSharedNoteToDelete] = useState(null);
+  const [openDeleteSharedNoteDialog, setOpenDeleteSharedNoteDialog] = useState(false);
+  
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState('success');
   
-  // New states for enhanced functionality
+  // Other states for enhanced functionality
   const [detailsTabValue, setDetailsTabValue] = useState(0);
   const [pastSessions, setPastSessions] = useState([]);
   const [loadingPastSessions, setLoadingPastSessions] = useState(false);
@@ -134,10 +141,9 @@ export default function SessionsManagement() {
   // Handle viewing session details and fetching past sessions
   const handleViewSessionDetails = async (session) => {
     setSelectedSession(session);
-    // Reset the new private note input
+    // Reset the new note inputs
     setNewPrivateNote('');
-    // Set shared notes from session
-    setSharedNotes(session.notes?.sharedNotes || '');
+    setNewSharedNote('');
     setDetailsTabValue(0); // Reset to first tab
     navigate(`/sessionList/${session._id}`, { replace: true });
     setOpenSessionDetailsDialog(true);
@@ -189,9 +195,12 @@ export default function SessionsManagement() {
     }
   };
 
-  const handleSaveSharedNotes = async () => {
+  // New function for adding shared notes
+  const handleAddSharedNote = async () => {
+    if (!newSharedNote.trim()) return;
+    
     try {
-      await updateSharedNotes(selectedSession._id, sharedNotes);
+      await updateSharedNotes(selectedSession._id, newSharedNote);
       // Refresh sessions to get the updated notes
       await fetchSessions();
       // Update the selected session with the latest data
@@ -199,11 +208,12 @@ export default function SessionsManagement() {
       if (updatedSession) {
         setSelectedSession(updatedSession);
       }
-      setAlertMessage('Shared notes updated successfully');
+      setNewSharedNote(''); // Clear the input field
+      setAlertMessage('Shared note added successfully');
       setAlertSeverity('success');
       setAlertOpen(true);
     } catch (err) {
-      setAlertMessage('Failed to update shared notes');
+      setAlertMessage('Failed to add shared note');
       setAlertSeverity('error');
       setAlertOpen(true);
     }
@@ -212,6 +222,12 @@ export default function SessionsManagement() {
   const handleDeletePrivateNote = (noteId) => {
     setNoteToDelete(noteId);
     setOpenDeleteNoteDialog(true);
+  };
+
+  // New function for deleting shared notes
+  const handleDeleteSharedNote = (noteId) => {
+    setSharedNoteToDelete(noteId);
+    setOpenDeleteSharedNoteDialog(true);
   };
 
   const confirmDeleteNote = async () => {
@@ -234,6 +250,30 @@ export default function SessionsManagement() {
     } finally {
       setOpenDeleteNoteDialog(false);
       setNoteToDelete(null);
+    }
+  };
+
+  // New function for confirming deletion of shared notes
+  const confirmDeleteSharedNote = async () => {
+    try {
+      await deleteSharedNote(selectedSession._id, sharedNoteToDelete);
+      // Refresh sessions to get the updated notes
+      await fetchSessions();
+      // Update the selected session with the latest data
+      const updatedSession = sessions.find(s => s._id === selectedSession._id);
+      if (updatedSession) {
+        setSelectedSession(updatedSession);
+      }
+      setAlertMessage('Shared note deleted successfully');
+      setAlertSeverity('success');
+      setAlertOpen(true);
+    } catch (err) {
+      setAlertMessage('Failed to delete shared note');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    } finally {
+      setOpenDeleteSharedNoteDialog(false);
+      setSharedNoteToDelete(null);
     }
   };
 
@@ -435,7 +475,8 @@ export default function SessionsManagement() {
                               </Box>
                             </>
                           )}
-                          {((session.notes?.privateNotes && session.notes.privateNotes.length > 0) || session.notes?.sharedNotes) && (
+                          {((session.notes?.privateNotes && session.notes.privateNotes.length > 0) || 
+                            (session.notes?.sharedNotes && session.notes.sharedNotes.length > 0)) && (
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                               <NoteOutlined sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                               <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: '500px' }}>
@@ -613,41 +654,99 @@ export default function SessionsManagement() {
                 )}
               </TabPanel>
               
-              {/* Shared Notes Tab */}
+              {/* Shared Notes Tab - Updated for multiple notes */}
               <TabPanel value={detailsTabValue} index={1}>
                 <Typography variant="subtitle1" color="text.secondary" paragraph>
                   These notes will be visible to both you and the client. Use this space for session summaries,
                   homework assignments, or any information you want to share with your client.
                 </Typography>
                 
-                <TextField
-                  label="Shared Notes"
-                  multiline
-                  rows={8}
-                  fullWidth
-                  margin="normal"
-                  variant="outlined"
-                  value={sharedNotes}
-                  onChange={(e) => setSharedNotes(e.target.value)}
-                  placeholder="Add shared notes about this session..."
-                />
+                {/* Add new shared note */}
+                <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+                  <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                    Add New Shared Note
+                  </Typography>
+                  <TextField
+                    label="New Shared Note"
+                    multiline
+                    rows={4}
+                    fullWidth
+                    margin="normal"
+                    variant="outlined"
+                    value={newSharedNote}
+                    onChange={(e) => setNewSharedNote(e.target.value)}
+                    placeholder="Add a new shared note that will be visible to your client..."
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                    <Button
+                      onClick={handleAddSharedNote}
+                      variant="contained"
+                      disableElevation
+                      startIcon={<AddCircleOutline />}
+                      disabled={!newSharedNote.trim()}
+                      sx={{
+                        bgcolor: 'black',
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: 'rgba(0, 0, 0, 0.8)',
+                        }
+                      }}
+                    >
+                      Add Shared Note
+                    </Button>
+                  </Box>
+                </Paper>
+
+                {/* Display existing shared notes */}
+                <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                  Previous Shared Notes
+                </Typography>
                 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                  <Button
-                    onClick={handleSaveSharedNotes}
-                    variant="contained"
-                    disableElevation
-                    sx={{
-                      bgcolor: 'black',
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: 'rgba(0, 0, 0, 0.8)',
-                      }
-                    }}
-                  >
-                    Save Shared Notes
-                  </Button>
-                </Box>
+                {(!selectedSession.notes?.sharedNotes || selectedSession.notes.sharedNotes.length === 0) ? (
+                  <Typography color="text.secondary">No shared notes yet.</Typography>
+                ) : (
+                  <List>
+                    {/* Check if sharedNotes is an array */}
+                    {Array.isArray(selectedSession.notes.sharedNotes) ? (
+                      // If it's an array, map through it
+                      selectedSession.notes.sharedNotes.map((note, index) => (
+                        <Card key={note._id || index} sx={{ mb: 2, borderRadius: 2 }}>
+                          <CardContent>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                {formatNoteDate(note.createdAt)}
+                              </Typography>
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleDeleteSharedNote(note._id)}
+                                sx={{ color: 'error.main' }}
+                              >
+                                <DeleteOutline fontSize="small" />
+                              </IconButton>
+                            </Box>
+                            <Typography variant="body1" sx={{ mt: 1 }}>
+                              {note.content}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      // If it's a string (legacy format), display as a single note
+                      <Card sx={{ mb: 2, borderRadius: 2 }}>
+                        <CardContent>
+                          <Typography variant="body1">
+                            {selectedSession.notes.sharedNotes}
+                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Legacy note format - please add a new note to convert to the new system
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </List>
+                )}
               </TabPanel>
               
               {/* Private Notes Tab */}
@@ -800,15 +899,29 @@ export default function SessionsManagement() {
                             </Box>
                           )}
                           
-                          {session.notes?.sharedNotes && (
+                          {session.notes?.sharedNotes && session.notes.sharedNotes.length > 0 && (
                             <Box sx={{ mt: 2 }}>
                               <Typography variant="subtitle2" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
                                 <ShareOutlined sx={{ fontSize: 16, mr: 0.5 }} />
                                 Shared Notes
                               </Typography>
-                              <Typography variant="body2" paragraph sx={{ mt: 1 }}>
-                                {session.notes.sharedNotes}
-                              </Typography>
+                              {Array.isArray(session.notes.sharedNotes) ? (
+                                session.notes.sharedNotes.map((note, i) => (
+                                  <Box key={note._id || i} sx={{ mt: 1, mb: 2 }}>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      {formatNoteDate(note.createdAt)}
+                                    </Typography>
+                                    <Typography variant="body2" paragraph>
+                                      {note.content}
+                                    </Typography>
+                                    {i < session.notes.sharedNotes.length - 1 && <Divider sx={{ my: 1 }} />}
+                                  </Box>
+                                ))
+                              ) : (
+                                <Typography variant="body2" paragraph sx={{ mt: 1 }}>
+                                  {typeof session.notes.sharedNotes === 'string' ? session.notes.sharedNotes : 'No shared notes available'}
+                                </Typography>
+                              )}
                             </Box>
                           )}
 
