@@ -76,7 +76,7 @@ export default function HealNestDashboard() {
           // Load these in parallel since they depend on therapist but not on each other
           await Promise.all([
             fetchAuthenticatedAvailability(),
-            fetchSessions(therapist._id),
+            fetchSessions(),
             fetchCurrentTherapistFeedback()
           ]);
         } catch (error) {
@@ -90,31 +90,39 @@ export default function HealNestDashboard() {
     }
   }, [therapist, fetchAuthenticatedAvailability, fetchSessions, fetchCurrentTherapistFeedback]);
 
-  // Also load the list of all therapists (if needed)
-  useEffect(() => {
-    fetchTherapists();
-  }, [fetchTherapists]);
+
 
   // Filter sessions to show only scheduled sessions
-  const scheduledSessions = sessions.filter(session => session.status === 'scheduled');
-  const completedSessions = sessions.filter(session => session.status === 'completed');
 
-  // Calculate unique clients
-  const uniqueClientIds = [...new Set(sessions.map(session => 
-    session.clientId && session.clientId._id ? session.clientId._id : null)
-    .filter(id => id !== null))];
-  const totalPatients = uniqueClientIds.length;
+const scheduledSessions = sessions && sessions.length > 0 
+    ? sessions.filter(session => session.status === 'scheduled')
+    : [];
 
-  // Sort feedbacks by most recent
-  const recentFeedbacks = [...feedbacks]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 3); // Display only the 3 most recent feedbacks
+const completedSessions = sessions && sessions.length > 0
+    ? sessions.filter(session => session.status === 'completed')
+    : [];
+
+
+   // Calculate unique clients with safety checks
+const uniqueClientIds = sessions && sessions.length > 0
+    ? [...new Set(sessions
+        .filter(session => session.clientId && session.clientId._id)
+        .map(session => session.clientId._id))]
+    : [];
+
+const totalPatients = uniqueClientIds.length;
+ // Sort feedbacks by most recent with safety checks
+  const recentFeedbacks = feedbacks && feedbacks.length > 0
+    ? [...feedbacks]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 3) // Display only the 3 most recent feedbacks
+    : [];
 
   // Calculate stats
   const stats = {
-    upcomingSessions: scheduledSessions.length,
-    completedSessions: completedSessions.length,
-    totalPatients: totalPatients,
+    upcomingSessions: scheduledSessions.length ,
+    completedSessions: completedSessions.length ,
+    totalPatients: totalPatients ,
     averageRating: feedbacks.length > 0 
       ? (feedbacks.reduce((sum, feedback) => sum + feedback.rating, 0) / feedbacks.length).toFixed(1)
       : 0
@@ -154,7 +162,7 @@ export default function HealNestDashboard() {
               </Typography>
             </Box>
             <Typography variant="h3" fontWeight="bold">
-              {stats.completedSessions}
+              {stats.completedSessions} 
             </Typography>
           </Paper>
         </Grid>
@@ -216,7 +224,7 @@ export default function HealNestDashboard() {
                 <Typography variant="body1" color="text.secondary">
                   Loading sessions...
                 </Typography>
-              ) : scheduledSessions.length === 0 ? (
+              ) : !scheduledSessions || scheduledSessions.length === 0 ? (
                 <Typography variant="body1" color="text.secondary">
                   No scheduled sessions.
                 </Typography>

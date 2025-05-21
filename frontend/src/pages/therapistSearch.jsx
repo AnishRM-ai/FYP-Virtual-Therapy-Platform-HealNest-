@@ -561,8 +561,8 @@ const TherapistFinder = () => {
 
   // Available filters - moved to one central location
   const allFilters = [
-    'Anxiety', 'Depression', 'Trauma', 'Relationships', 
-    'Online Sessions', 'In-Person', 'Evening Hours'
+    'Anxiety', 'Depression', 'Trauma', 'Relationship', 
+    'Grief', 'Self-Esteem', 'Family Conflict'
   ];
 
   useEffect(() => {

@@ -17,17 +17,20 @@ const useNotificationStore = create((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      const response = await axios.get(`${API_URL}/`, {
-      });
+      const response = await axios.get(`${API_URL}`);
       
-      const notifications = response.data.data;
-      const unreadCount = notifications.filter(notification => !notification.read).length;
-      
-      set({ 
-        notifications,
-        unreadCount,
-        loading: false 
-      });
+      if (response.data.success) {
+        const notifications = response.data.data;
+        const unreadCount = notifications.filter(notification => !notification.read).length;
+        
+        set({ 
+          notifications,
+          unreadCount,
+          loading: false 
+        });
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch notifications');
+      }
       
       return notifications;
     } catch (error) {
@@ -44,24 +47,24 @@ const useNotificationStore = create((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      await axios.patch(`${API_URL}/notifications/${notificationId}`, {}, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await axios.patch(`${API_URL}/${notificationId}`);
       
-      // Update local state to mark notification as read
-      const updatedNotifications = get().notifications.map(notification => 
-        notification._id === notificationId ? { ...notification, read: true } : notification
-      );
-      
-      const unreadCount = updatedNotifications.filter(notification => !notification.read).length;
-      
-      set({ 
-        notifications: updatedNotifications,
-        unreadCount,
-        loading: false 
-      });
+      if (response.data.success) {
+        // Update local state to mark notification as read
+        const updatedNotifications = get().notifications.map(notification => 
+          notification._id === notificationId ? { ...notification, read: true } : notification
+        );
+        
+        const unreadCount = updatedNotifications.filter(notification => !notification.read).length;
+        
+        set({ 
+          notifications: updatedNotifications,
+          unreadCount,
+          loading: false 
+        });
+      } else {
+        throw new Error(response.data.message || 'Failed to mark notification as read');
+      }
       
       return true;
     } catch (error) {
@@ -78,14 +81,15 @@ const useNotificationStore = create((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      // This assumes your backend has an endpoint to mark all as read
-      // If it doesn't, you could call markAsRead for each unread notification instead
-      const markAllPromises = get().notifications
-        .filter(notification => !notification.read)
-        .map(notification => get().markAsRead(notification._id));
+      // Mark each unread notification as read
+      const unreadNotifications = get().notifications.filter(notification => !notification.read);
+      const markPromises = unreadNotifications.map(notification => 
+        axios.patch(`${API_URL}/${notification._id}`)
+      );
       
-      await Promise.all(markAllPromises);
+      await Promise.all(markPromises);
       
+      // Update local state
       set({ 
         notifications: get().notifications.map(notification => ({ ...notification, read: true })),
         unreadCount: 0,
@@ -101,7 +105,7 @@ const useNotificationStore = create((set, get) => ({
       return false;
     }
   },
-  
+
   // Clear notification errors
   clearError: () => set({ error: null }),
 }));

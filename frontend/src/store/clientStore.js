@@ -25,7 +25,7 @@ const useClientSessionStore = create((set) => ({
           try {
               // First get the sessions
               const response = await axios.get(`http://localhost:5555/session/clientSession`);
-              const sessions = response.data.sessions;
+                 const sessions = response.data.sessions || []; 
               
               // For each session, fetch the decrypted notes
               const sessionsWithDecryptedNotes = await Promise.all(

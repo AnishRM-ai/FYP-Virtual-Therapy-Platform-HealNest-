@@ -394,16 +394,16 @@ export default function SessionsManagement() {
           </Box>
         ) : errorMessage ? (
           <Box sx={{ p: 3 }}>
-            <Typography color="error">{errorMessage}</Typography>
+            <Typography color="error">No Sessions Found</Typography>
           </Box>
         ) : (
           <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
-            {sessions.length === 0 ? (
+            {!sessions || sessions.length === 0? (
               <ListItem>
                 <ListItemText primary="No sessions found" />
               </ListItem>
-            ) : (
-              sessions.map((session, index) => (
+            ) : 
+              (sessions.map((session, index) => (
                 <React.Fragment key={session._id}>
                   <ListItem
                     alignItems="flex-start"

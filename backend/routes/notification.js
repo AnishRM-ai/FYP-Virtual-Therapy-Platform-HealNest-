@@ -6,4 +6,5 @@ const verifyToken = require('../middleware/authMiddleware');
 router.get('', verifyToken, getNotifications);
 router.patch('/:id', verifyToken, markAsRead);
 
+
 module.exports = router;

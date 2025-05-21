@@ -246,7 +246,7 @@ const AvailabilitySection = () => {
       });
       
       // Refresh the availability data
-      fetchAuthenticatedAvailability();
+      await fetchAuthenticatedAvailability();
     } catch (error) {
       console.error('Error creating availability slot:', error);
       setSnackbar({
@@ -324,7 +324,7 @@ const AvailabilitySection = () => {
       });
       
       // Refresh the availability data
-      fetchAuthenticatedAvailability();
+      await fetchAuthenticatedAvailability();
     } catch (error) {
       console.error('Error deleting availability slot:', error);
       setSnackbar({

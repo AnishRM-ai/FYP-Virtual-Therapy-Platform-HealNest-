@@ -380,14 +380,14 @@ function HealNestAdminDashboard() {
               <List sx={{ p: 0 }}>
                 {notifications.map((notification) => (
                   <ListItem
-                    key={notification.id}
+                    key={notification._id}
                     sx={{
                       borderBottom: '1px solid #f0f0f0',
                       backgroundColor: notification.read ? 'transparent' : '#f5f7fa'
                     }}
                     secondaryAction={
                       !notification.read && (
-                        <IconButton edge="end" size="small" onClick={() => handleNotificationRead(notification.id)}>
+                        <IconButton edge="end" size="small" onClick={() => handleNotificationRead(notification._id)}>
                           <CheckIcon fontSize="small" />
                         </IconButton>
                       )
@@ -411,8 +411,18 @@ function HealNestAdminDashboard() {
                       )}
                     </ListItemIcon>
                     <ListItemText
-                      primary={notification.message}
-                      secondary={new Date(notification.timestamp).toLocaleString()}
+                      primary={notification.title}
+                      secondary={
+                        <>
+                          <Typography variant="body2" component="span">
+                            {notification.message}
+                          </Typography>
+                          <br />
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </Typography>
+                        </>
+                      }
                       primaryTypographyProps={{
                         fontWeight: notification.read ? 'normal' : 'bold'
                       }}
@@ -990,111 +1000,111 @@ function HealNestAdminDashboard() {
                     </Box>
 
                     <Box sx={{ mb: 2 }}>
-  <Typography variant="subtitle2" color="text.secondary">Qualifications</Typography>
-  {/* Check if qualificationProof exists */}
-  {selectedTherapist.qualificationProof && (
-    <Grid container spacing={2} sx={{ mt: 1 }}>
-      {/* Resume document */}
-      {selectedTherapist.qualificationProof.resume && (
-        <Grid item xs={12} sm={6}>
-          <Card variant="outlined">
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '4px',
-                    bgcolor: '#f5f5f5',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.5rem'
-                  }}
-                >
-                  📄
-                </Box>
-                <Box>
-                  <Typography variant="body2" fontWeight="bold">
-                    Resume
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    PDF • Document
-                  </Typography>
-                </Box>
-              </Box>
-              <Button
-                size="small"
-                variant="outlined"
-                fullWidth
-                href={`http://localhost:5555/${selectedTherapist.qualificationProof.resume}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View Resume
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-      )}
-      {/* Professional License document */}
-      {selectedTherapist.qualificationProof.professionalLicense && (
-        <Grid item xs={12} sm={6}>
-          <Card variant="outlined">
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '4px',
-                    bgcolor: '#f5f5f5',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.5rem'
-                  }}
-                >
-                  📄
-                </Box>
-                <Box>
-                  <Typography variant="body2" fontWeight="bold">
-                    Professional License
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    PDF • Document
-                  </Typography>
-                </Box>
-              </Box>
-              <Button
-                size="small"
-                variant="outlined"
-                fullWidth
-                href={`http://localhost:5555/${selectedTherapist.qualificationProof.professionalLicense}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View License
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-      )}
-      {/* Show message if no documents are uploaded */}
-      {(!selectedTherapist.qualificationProof.resume && !selectedTherapist.qualificationProof.professionalLicense) && (
-        <Grid item xs={12}>
-          <Alert severity="info">No documents uploaded</Alert>
-        </Grid>
-      )}
-    </Grid>
-  )}
-  {/* Handle case where qualificationProof doesn't exist at all */}
-  {!selectedTherapist.qualificationProof && (
-    <Grid item xs={12}>
-      <Alert severity="info">No documents uploaded</Alert>
-    </Grid>
-  )}
-</Box>
+                      <Typography variant="subtitle2" color="text.secondary">Qualifications</Typography>
+                      {/* Check if qualificationProof exists */}
+                      {selectedTherapist.qualificationProof && (
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                          {/* Resume document */}
+                          {selectedTherapist.qualificationProof.resume && (
+                            <Grid item xs={12} sm={6}>
+                              <Card variant="outlined">
+                                <CardContent>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                    <Box
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '4px',
+                                        bgcolor: '#f5f5f5',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1.5rem'
+                                      }}
+                                    >
+                                      📄
+                                    </Box>
+                                    <Box>
+                                      <Typography variant="body2" fontWeight="bold">
+                                        Resume
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        PDF • Document
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    fullWidth
+                                    href={`http://localhost:5555/${selectedTherapist.qualificationProof.resume}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    View Resume
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          )}
+                          {/* Professional License document */}
+                          {selectedTherapist.qualificationProof.professionalLicense && (
+                            <Grid item xs={12} sm={6}>
+                              <Card variant="outlined">
+                                <CardContent>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                    <Box
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '4px',
+                                        bgcolor: '#f5f5f5',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1.5rem'
+                                      }}
+                                    >
+                                      📄
+                                    </Box>
+                                    <Box>
+                                      <Typography variant="body2" fontWeight="bold">
+                                        Professional License
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        PDF • Document
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    fullWidth
+                                    href={`http://localhost:5555/${selectedTherapist.qualificationProof.professionalLicense}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    View License
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          )}
+                          {/* Show message if no documents are uploaded */}
+                          {(!selectedTherapist.qualificationProof.resume && !selectedTherapist.qualificationProof.professionalLicense) && (
+                            <Grid item xs={12}>
+                              <Alert severity="info">No documents uploaded</Alert>
+                            </Grid>
+                          )}
+                        </Grid>
+                      )}
+                      {/* Handle case where qualificationProof doesn't exist at all */}
+                      {!selectedTherapist.qualificationProof && (
+                        <Grid item xs={12}>
+                          <Alert severity="info">No documents uploaded</Alert>
+                        </Grid>
+                      )}
+                    </Box>
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="subtitle2" color="text.secondary">Bio</Typography>
                       <Typography variant="body1">
